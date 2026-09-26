@@ -2,12 +2,12 @@
 import { ref, watch } from 'vue';
 
 // daisyUI themes compiled in src/style.css; 'tunniplaan' is our own default
-const THEMES = ['tunniplaan', 'light', 'dark', 'dim', 'nord', 'cupcake', 'emerald', 'corporate', 'retro', 'synthwave', 'dracula', 'sunset', 'black'];
+const THEMES = ['tunniplaan', 'techno', 'techno-dark', 'light', 'dark', 'dim', 'nord', 'cupcake', 'emerald', 'corporate', 'retro', 'synthwave', 'dracula', 'sunset', 'black'];
 const STORAGE_KEY = 'tahvel.theme'; // also read by the inline script in index.html
 
 const saved = localStorage.getItem(STORAGE_KEY);
 const theme = ref(THEMES.includes(saved) ? saved : THEMES[0]);
-const label = (t) => t[0].toUpperCase() + t.slice(1);
+const label = (t) => t[0].toUpperCase() + t.slice(1).replace('-', ' ');
 
 watch(theme, (t) => {
     document.documentElement.dataset.theme = t;

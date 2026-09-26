@@ -14,7 +14,7 @@ onMounted(store.init);
 <template>
   <div class="mx-auto max-w-[900px] p-4">
     <header class="flex items-center gap-2.5">
-      <div class="size-7 rounded-lg bg-linear-135 from-primary to-cyan-500" aria-hidden="true"></div>
+      <div class="size-7 rounded-lg bg-linear-135 from-primary to-accent" aria-hidden="true"></div>
       <h1 class="text-lg font-bold">Tunniplaan</h1>
       <Settings class="ml-auto"></Settings>
     </header>
