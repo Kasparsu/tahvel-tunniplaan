@@ -5,6 +5,7 @@ import DayWeekToggle from './components/DayWeekToggle.vue';
 import Search from './components/Search.vue';
 import WeekSelect from './components/WeekSelect.vue';
 import LessonsGrid from './components/LessonsGrid.vue';
+import Settings from './components/Settings.vue';
 import { useTimetableStore } from './stores/timetable';
 
 const store = useTimetableStore();
@@ -15,6 +16,7 @@ onMounted(store.init);
     <header class="flex items-center gap-2.5">
       <div class="size-7 rounded-lg bg-linear-135 from-primary to-cyan-500" aria-hidden="true"></div>
       <h1 class="text-lg font-bold">Tunniplaan</h1>
+      <Settings class="ml-auto"></Settings>
     </header>
 
     <div class="mt-3 grid grid-cols-[auto_auto] justify-between gap-2.5 md:grid-cols-[1fr_auto_auto] md:justify-stretch">

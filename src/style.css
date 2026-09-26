@@ -1,6 +1,7 @@
 @import "tailwindcss";
+/* Keep in sync with THEMES in src/components/ThemeSelect.vue */
 @plugin "daisyui" {
-  themes: false;
+  themes: light, dark, dim, nord, cupcake, emerald, corporate, retro, synthwave, dracula, sunset, black;
 }
 
 /* Dark slate + violet, the colours the app used before daisyUI */
@@ -36,6 +37,7 @@
   --noise: 0;
 }
 
+/* Tint for today's lessons, derived from the active theme so it works on light themes too */
 @theme {
-  --color-today: #240f3b;
+  --color-today: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-200));
 }

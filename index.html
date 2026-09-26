@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tunniplaan · Techno TLN Kesklinn</title>
+  <script>
+    // Apply the saved theme before the app loads so the page does not flash the default one
+    try { const t = localStorage.getItem('tahvel.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
 </head>
 <body>
   <div id="app"></div>
