@@ -5,6 +5,7 @@ Settings.defaultZone = 'Europe/Tallinn';
 
 // Constants
 const DAY_LETTERS = ['E', 'T', 'K', 'N', 'R', 'L', 'P']; // Mon-Sun
+const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev'];
 
 // Snapshot of the Edupage timetable, written by scripts/fetch-edupage.ts at deploy time.
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
@@ -105,6 +106,7 @@ export const useTimetableStore = defineStore('timetable', () => {
       const date = monday.value.plus({ days: l.day });
       const card = {
         day: DAY_LETTERS[l.day],
+        dayName: DAY_NAMES[l.day],
         date: date.toFormat('dd.MM'),
         time: { start: l.start, end: l.end },
         isToday: displayType.value === 'week' && date.hasSame(DateTime.now(), 'day'),
