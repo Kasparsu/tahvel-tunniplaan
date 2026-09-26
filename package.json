@@ -2,9 +2,10 @@
   "name": "tahvel-tunniplaan",
   "private": true,
   "scripts": {
+    "fetch": "bun scripts/fetch-edupage.ts",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --base /tahvel-tunniplaan/"
   },
   "devDependencies": {
     "@types/bun": "latest",
