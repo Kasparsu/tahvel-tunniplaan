@@ -2,8 +2,8 @@
 defineProps(['current']);
 </script>
 <template>
-    <div class="toggle">
-        <button class="btn" :class="{primary: current==='today'}" id="btnToday" @click="$emit('toggle', 'today')">Täna</button>
-        <button class="btn" :class="{primary: current==='week'}" id="btnWeek" @click="$emit('toggle', 'week')">Nädal</button>
+    <div class="flex gap-2">
+        <button class="btn" :class="current==='today' ? 'btn-primary' : 'border-neutral'" @click="$emit('toggle', 'today')">Täna</button>
+        <button class="btn" :class="current==='week' ? 'btn-primary' : 'border-neutral'" @click="$emit('toggle', 'week')">Nädal</button>
     </div>
 </template>

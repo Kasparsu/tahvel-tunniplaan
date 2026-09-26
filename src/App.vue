@@ -187,32 +187,32 @@ function shiftWeek(step) {
 }
 </script>
 <template>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <h1>Tunniplaan</h1>
-      </div>
+  <div class="mx-auto max-w-[900px] p-4">
+    <header class="flex items-center gap-2.5">
+      <div class="size-7 rounded-lg bg-linear-135 from-primary to-cyan-500" aria-hidden="true"></div>
+      <h1 class="text-lg font-bold">Tunniplaan</h1>
     </header>
 
-    <div class="controls">
-      <Search :searchValue="searchValue" @update="autocomplete" @selected="select" :options="options" @clear="clearSearch"></Search>
-      <div class="week-range" id="weekRange">
-        <button class="btn arrow" :disabled="weekIdx <= 0" @click="shiftWeek(-1)" aria-label="Eelmine nädal">‹</button>
-        <span :class="{ current: isCurrentWeek }">{{ weekRange }}</span>
-        <button class="btn arrow" :disabled="!index || weekIdx >= index.weeks.length - 1" @click="shiftWeek(1)" aria-label="Järgmine nädal">›</button>
+    <div class="mt-3 grid grid-cols-[auto_auto] justify-between gap-2.5 md:grid-cols-[1fr_auto_auto] md:justify-stretch">
+      <Search class="col-span-full md:col-span-1" :searchValue="searchValue" @update="autocomplete" @selected="select" :options="options" @clear="clearSearch"></Search>
+      <div class="flex items-center gap-1.5 text-sm whitespace-nowrap text-base-content/60">
+        <button class="btn btn-circle btn-ghost btn-sm" :disabled="weekIdx <= 0" @click="shiftWeek(-1)" aria-label="Eelmine nädal">‹</button>
+        <span :class="{ 'font-semibold text-base-content': isCurrentWeek }">{{ weekRange }}</span>
+        <button class="btn btn-circle btn-ghost btn-sm" :disabled="!index || weekIdx >= index.weeks.length - 1" @click="shiftWeek(1)" aria-label="Järgmine nädal">›</button>
       </div>
       <DayWeekToggle :current="displayType" @toggle="toggle"></DayWeekToggle>
     </div>
 
     <DayChips :chips="chips" @choose="setDay" :day="day"></DayChips>
     <LessonsGrid :lessons="lessons"></LessonsGrid>
-    <div class="empty" v-if="loadError">{{ loadError }}</div>
-    <div class="empty" v-else-if="!selectedSearch">Vali õpperühm või õpetaja, et näha tunniplaani.</div>
-    <div class="empty" v-else-if="weekData && !lessons.length">{{ displayType === 'week' ? 'Sel nädalal pole tunde.' : 'Sel päeval pole tunde.' }}</div>
+    <div class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60" v-if="loadError || !selectedSearch || (weekData && !lessons.length)">
+      <template v-if="loadError">{{ loadError }}</template>
+      <template v-else-if="!selectedSearch">Vali õpperühm või õpetaja, et näha tunniplaani.</template>
+      <template v-else>{{ displayType === 'week' ? 'Sel nädalal pole tunde.' : 'Sel päeval pole tunde.' }}</template>
+    </div>
 
-    <footer v-if="index">
-      Andmed: <a :href="index.source" target="_blank" rel="noopener">Edupage</a>, uuendatud {{ updated }}
+    <footer class="mt-6 mb-2 text-center text-xs text-base-content/60" v-if="index">
+      Andmed: <a class="link link-secondary" :href="index.source" target="_blank" rel="noopener">Edupage</a>, uuendatud {{ updated }}
     </footer>
   </div>
 </template>
