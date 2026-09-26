@@ -4,7 +4,8 @@ const store = useTimetableStore();
 </script>
 <template>
     <div class="relative">
-        <label class="input w-full">
+        <!-- focus ring in the theme's primary colour instead of daisyUI's default text colour -->
+        <label class="input w-full focus-within:[--input-color:var(--color-primary)]">
             <input v-model="store.searchValue" @input="store.autocomplete(store.searchValue)" type="text" class="text-base" placeholder="Otsi õpperühma või õpetajat…" autocomplete="off"
                 aria-autocomplete="list" :aria-expanded="store.options.length > 0" />
             <button v-if="store.searchValue" class="btn btn-ghost btn-xs btn-circle text-lg text-base-content/60" title="Puhasta" @click="store.clearSearch()">×</button>
