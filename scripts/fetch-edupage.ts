@@ -9,12 +9,17 @@
  *
  * Only weeks the school has published (hidden: false) are fetched.
  *
+ * Edupage's school server drops connections from some GitHub Actions IPs, so the deploy
+ * workflow sets EDUPAGE_PROXY to the Cloudflare Worker in worker/, which relays the requests.
+ *
  *   bun scripts/fetch-edupage.ts
+ *   EDUPAGE_PROXY=https://tahvel-edupage-proxy.<account>.workers.dev bun scripts/fetch-edupage.ts
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const SCHOOL = process.env.EDUPAGE_SCHOOL ?? "kesklinn-techno";
-const SERVER = `https://${SCHOOL}.edupage.org/timetable/server`;
+const SOURCE = `https://${SCHOOL}.edupage.org`;
+const SERVER = `${process.env.EDUPAGE_PROXY?.replace(/\/$/, "") ?? SOURCE}/timetable/server`;
 const OUT = new URL("../public/data/", import.meta.url).pathname;
 
 async function call<T>(script: string, func: string, args: unknown[]): Promise<T> {
@@ -22,6 +27,8 @@ async function call<T>(script: string, func: string, args: unknown[]): Promise<T
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ __args: args, __gsh: "00000000" }),
+    // a blocked connection otherwise hangs for the OS connect timeout (over 2 minutes)
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`${func}: HTTP ${res.status}`);
   const body = (await res.json()) as { r?: T };
@@ -134,11 +141,11 @@ const sortEt = (a: string, b: string) => a.localeCompare(b, "et");
 writeFileSync(
   `${OUT}index.json`,
   JSON.stringify({
-    source: `https://${SCHOOL}.edupage.org/timetable/`,
+    source: `${SOURCE}/timetable/`,
     generated: new Date().toISOString(),
     weeks,
     classes: [...classes].sort(sortEt),
     teachers: [...teachers].sort(sortEt),
   }),
 );
-console.log(`${weeks.length} weeks, ${classes.size} classes, ${teachers.size} teachers -> ${OUT}`);
+console.log(`${weeks.length} weeks, ${classes.size} classes, ${teachers.size} teachers -> ${OUT} (via ${SERVER})`);

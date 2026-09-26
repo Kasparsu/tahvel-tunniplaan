@@ -4,6 +4,7 @@
   "scripts": {
     "fetch": "bun scripts/fetch-edupage.ts",
     "themes": "bun scripts/gen-themes.ts",
+    "worker:deploy": "bunx wrangler deploy -c worker/wrangler.jsonc",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --base /tahvel-tunniplaan/"

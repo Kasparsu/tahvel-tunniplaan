@@ -27,6 +27,10 @@ jobs:
         run: bun install
 
       - name: Fetch timetable from Edupage
+        # Edupage's school server drops connections from some GitHub runner IPs; the
+        # Cloudflare Worker in worker/ relays the requests (deploy it with bun run worker:deploy)
+        env:
+          EDUPAGE_PROXY: https://tahvel-edupage-proxy.kasparsu.workers.dev
         run: bun run fetch
 
       - name: Build project
