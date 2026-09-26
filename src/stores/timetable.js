@@ -26,6 +26,9 @@ async function getJson(file) {
   return response.json();
 }
 
+const lessonsFor = (sel, lessons) =>
+  lessons.filter((l) => (sel.type === 'teacher' ? l.teachers.includes(sel.name) : l.classes.includes(sel.name)));
+
 /** This week if it is published, otherwise the nearest week that is. */
 function currentWeekIdx(weeks) {
   const thisMonday = DateTime.now().startOf('week').toISODate();
@@ -71,9 +74,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   const lessons = computed(() => {
     const sel = selectedSearch.value;
     if (!sel || !weekData.value) return [];
-    let list = weekData.value.lessons.filter((l) =>
-      sel.type === 'teacher' ? l.teachers.includes(sel.name) : l.classes.includes(sel.name),
-    );
+    let list = lessonsFor(sel, weekData.value.lessons);
     if (displayType.value === 'today') list = list.filter((l) => l.day === todayIdx.value);
     if (displayType.value === 'day') list = list.filter((l) => l.day === day.value);
     return list.map((l) => {
@@ -100,15 +101,46 @@ export const useTimetableStore = defineStore('timetable', () => {
   });
 
   // Loading
+  function fetchWeek(file) {
+    weekCache[file] ??= getJson(file).catch((e) => {
+      delete weekCache[file];
+      throw e;
+    });
+    return weekCache[file];
+  }
+
   async function loadWeek() {
     if (!week.value) return;
-    const file = week.value.file;
-    weekCache[file] ??= getJson(file);
     try {
-      weekData.value = await weekCache[file];
+      weekData.value = await fetchWeek(week.value.file);
     } catch (e) {
-      delete weekCache[file];
       loadError.value = 'Tunniplaani laadimine ebaõnnestus.';
+    }
+  }
+
+  /** Open the day of the selection's next lesson that has not ended yet: today if lessons remain, else a later day or week. */
+  async function showNextLessons() {
+    const sel = selectedSearch.value;
+    const weeks = index.value?.weeks ?? [];
+    const now = DateTime.now();
+    for (let i = currentWeekIdx(weeks); i < weeks.length; i++) {
+      let data;
+      try {
+        data = await fetchWeek(weeks[i].file);
+      } catch {
+        return;
+      }
+      if (selectedSearch.value !== sel) return; // user picked something else meanwhile
+      const monday = DateTime.fromISO(weeks[i].monday);
+      const ends = (l) => DateTime.fromISO(`${monday.plus({ days: l.day }).toISODate()}T${l.end}`);
+      const next = lessonsFor(sel, data.lessons)
+        .filter((l) => ends(l) > now)
+        .sort((a, b) => a.day - b.day || a.start.localeCompare(b.start))[0];
+      if (next) {
+        weekIdx.value = i;
+        setDay(next.day);
+        return;
+      }
     }
   }
 
@@ -164,6 +196,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     searchValue.value = selected.name;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedSearch.value));
     options.value = [];
+    showNextLessons();
   }
 
   function clearSearch() {
