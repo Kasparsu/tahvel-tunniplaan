@@ -88,7 +88,8 @@ export const useTimetableStore = defineStore('timetable', () => {
     const sel = selectedSearch.value;
     if (!sel || !weekData.value) return [];
     let list = lessonsFor(sel, weekData.value.lessons);
-    if (displayType.value === 'today') list = list.filter((l) => l.day === todayIdx.value);
+    // when today is past the published weeks, the nearest week is not this week and has no "today"
+    if (displayType.value === 'today') list = isCurrentWeek.value ? list.filter((l) => l.day === todayIdx.value) : [];
     if (displayType.value === 'day') list = list.filter((l) => l.day === day.value);
 
     // Free periods before the first lesson and between lessons, not after the last one.
