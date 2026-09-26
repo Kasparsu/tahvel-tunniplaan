@@ -4,9 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tunniplaan · Techno TLN Kesklinn</title>
-  <script type="module" crossorigin src="/tahvel-tunniplaan/assets/index-NIRkhsY_.js"></script>
-  <link rel="stylesheet" crossorigin href="/tahvel-tunniplaan/assets/index-8HnAiFGJ.css">
-</head>
+  <meta name="theme-color" content="#3e1b86" />
+  <link rel="icon" href="/tahvel-tunniplaan/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/tahvel-tunniplaan/apple-touch-icon.png" />
+  <script>
+    // Apply the theme before the app loads so the page does not flash another one.
+    // No saved choice means automatic: Techno, or Techno dark when the device prefers dark (as in ThemeSelect.vue).
+    try {
+      const t = localStorage.getItem('tahvel.theme');
+      document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'techno-dark' : 'techno');
+    } catch {}
+  </script>
+  <script type="module" crossorigin src="/tahvel-tunniplaan/assets/index-Cf8BCStF.js"></script>
+  <link rel="stylesheet" crossorigin href="/tahvel-tunniplaan/assets/index-C0MZO8K6.css">
+<link rel="manifest" href="/tahvel-tunniplaan/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/tahvel-tunniplaan/registerSW.js"></script></head>
 <body>
   <div id="app"></div>
   
