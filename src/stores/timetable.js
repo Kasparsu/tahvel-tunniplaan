@@ -29,6 +29,18 @@ async function getJson(file) {
 const lessonsFor = (sel, lessons) =>
   lessons.filter((l) => (sel.type === 'teacher' ? l.teachers.includes(sel.name) : l.classes.includes(sel.name)));
 
+/** Bell periods lying wholly between `from` and `to`, back-to-back ones merged (08:30-09:15 + 09:15-10:00 = one block). */
+function freeBlocks(periods, from, to) {
+  const blocks = [];
+  for (const p of periods) {
+    if (p.start < from || p.end > to) continue;
+    const last = blocks.at(-1);
+    if (last?.end === p.start) last.end = p.end;
+    else blocks.push({ start: p.start, end: p.end });
+  }
+  return blocks;
+}
+
 /** This week if it is published, otherwise the nearest week that is. */
 function currentWeekIdx(weeks) {
   const thisMonday = DateTime.now().startOf('week').toISODate();
@@ -77,18 +89,34 @@ export const useTimetableStore = defineStore('timetable', () => {
     let list = lessonsFor(sel, weekData.value.lessons);
     if (displayType.value === 'today') list = list.filter((l) => l.day === todayIdx.value);
     if (displayType.value === 'day') list = list.filter((l) => l.day === day.value);
-    return list.map((l) => {
+
+    // Free periods before the first lesson and between lessons, not after the last one.
+    const periods = weekData.value.periods ?? [];
+    const withFree = [];
+    let cursor = { day: -1 };
+    for (const l of list) {
+      if (l.day !== cursor.day) cursor = { day: l.day, end: periods[0]?.start ?? l.start };
+      for (const b of freeBlocks(periods, cursor.end, l.start)) withFree.push({ day: l.day, ...b, free: true });
+      withFree.push(l);
+      if (l.end > cursor.end) cursor.end = l.end;
+    }
+
+    return withFree.map((l) => {
       const date = monday.value.plus({ days: l.day });
-      return {
+      const card = {
         day: DAY_LETTERS[l.day],
         date: date.toFormat('dd.MM'),
         time: { start: l.start, end: l.end },
+        isToday: displayType.value === 'week' && date.hasSame(DateTime.now(), 'day'),
+      };
+      if (l.free) return { ...card, free: true };
+      return {
+        ...card,
         name: l.subject,
         room: l.rooms.join(', '),
         group: [...l.classes, ...l.groups].join(' '),
         teacher: l.teachers.join(', '),
         showGroup: sel.type === 'teacher',
-        isToday: displayType.value === 'week' && date.hasSame(DateTime.now(), 'day'),
       };
     });
   });
