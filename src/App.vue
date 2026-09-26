@@ -6,6 +6,7 @@ import Search from './components/Search.vue';
 import WeekSelect from './components/WeekSelect.vue';
 import LessonsGrid from './components/LessonsGrid.vue';
 import Settings from './components/Settings.vue';
+import TechnoLogo from './components/TechnoLogo.vue';
 import { useTimetableStore } from './stores/timetable';
 
 const store = useTimetableStore();
@@ -14,7 +15,8 @@ onMounted(store.init);
 <template>
   <div class="mx-auto max-w-[900px] p-4">
     <header class="flex items-center gap-2.5">
-      <div class="size-7 rounded-lg bg-linear-135 from-primary to-accent" aria-hidden="true"></div>
+      <TechnoLogo class="h-7 w-auto text-primary"></TechnoLogo>
+      <div class="h-6 w-px bg-base-content/20" aria-hidden="true"></div>
       <h1 class="text-lg font-bold">Tunniplaan</h1>
       <Settings class="ml-auto"></Settings>
     </header>
