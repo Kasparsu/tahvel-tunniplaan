@@ -4,7 +4,8 @@
  * Edupage sends no CORS headers, so the browser cannot ask it directly. Instead this runs
  * in the deploy workflow (on a schedule) and writes public/data/, which Vite copies into
  * the site: index.json lists the published weeks and everything searchable, and
- * week-<monday>.json holds that week's lessons with times already resolved.
+ * week-<monday>.json holds that week's lessons with times already resolved, plus the bell
+ * schedule (periods) so the app can show free periods between lessons.
  *
  * Only weeks the school has published (hidden: false) are fetched.
  *
@@ -53,7 +54,12 @@ interface Lesson {
   rooms: string[];
 }
 
-function week(r: Row): { lessons: Lesson[]; classes: string[]; teachers: string[] } {
+interface Period {
+  start: string;
+  end: string;
+}
+
+function week(r: Row): { lessons: Lesson[]; periods: Period[]; classes: string[]; teachers: string[] } {
   const T: Record<string, Row[]> = Object.fromEntries(r.dbiAccessorRes.tables.map((t: Row) => [t.id, t.data_rows]));
   const byId = (name: string) => new Map((T[name] ?? []).map((x) => [x.id, x]));
   const periods = byId("periods");
@@ -95,6 +101,10 @@ function week(r: Row): { lessons: Lesson[]; classes: string[]; teachers: string[
   out.sort((a, b) => a.day - b.day || a.start.localeCompare(b.start) || a.classes.join().localeCompare(b.classes.join()));
   return {
     lessons: out,
+    periods: [...periods.values()]
+      .filter((p) => p.starttime && p.endtime)
+      .map((p) => ({ start: p.starttime, end: p.endtime }))
+      .sort((a, b) => a.start.localeCompare(b.start)),
     classes: [...classes.values()].map((c) => clean(c.short)).filter(Boolean),
     teachers: [...teachers.values()].map((t) => clean(t.name)).filter(Boolean),
   };
@@ -113,7 +123,7 @@ for (const t of published) {
   const data = week(await call<Row>("regulartt.js", "regularttGetData", [null, t.tt_num]));
   const monday = mondayOf(t.datefrom);
   const file = `week-${monday}.json`;
-  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, name: t.text, lessons: data.lessons }));
+  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, name: t.text, periods: data.periods, lessons: data.lessons }));
   data.classes.forEach((c) => classes.add(c));
   data.teachers.forEach((c) => teachers.add(c));
   weeks.push({ monday, name: t.text, file, lessons: data.lessons.length });
