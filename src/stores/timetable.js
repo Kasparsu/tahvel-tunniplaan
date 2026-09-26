@@ -69,6 +69,9 @@ export const useTimetableStore = defineStore('timetable', () => {
   const monday = computed(() => (week.value ? DateTime.fromISO(week.value.monday) : DateTime.now().startOf('week')));
   const isCurrentWeek = computed(() => monday.value.hasSame(DateTime.now(), 'week'));
   const todayIdx = computed(() => DateTime.now().weekday - 1);
+  const showingToday = computed(
+    () => displayType.value === 'today' || (displayType.value === 'day' && isCurrentWeek.value && day.value === todayIdx.value),
+  );
   const hasPrevWeek = computed(() => weekIdx.value > 0);
   const hasNextWeek = computed(() => !!index.value && weekIdx.value < index.value.weeks.length - 1);
 
@@ -149,9 +152,13 @@ export const useTimetableStore = defineStore('timetable', () => {
     }
   }
 
-  /** Open the day of the selection's next lesson that has not ended yet: today if lessons remain, else a later day or week. */
+  /**
+   * Open the day of the selection's next lesson that has not ended yet: today if lessons remain, else a later day or week.
+   * Resolves false when there is nothing to show, leaving the view as it was.
+   */
   async function showNextLessons() {
     const sel = selectedSearch.value;
+    if (!sel) return false;
     const weeks = index.value?.weeks ?? [];
     const now = DateTime.now();
     for (let i = currentWeekIdx(weeks); i < weeks.length; i++) {
@@ -159,9 +166,9 @@ export const useTimetableStore = defineStore('timetable', () => {
       try {
         data = await fetchWeek(weeks[i].file);
       } catch {
-        return;
+        return false;
       }
-      if (selectedSearch.value !== sel) return; // user picked something else meanwhile
+      if (selectedSearch.value !== sel) return true; // user picked something else meanwhile, leave the view alone
       const monday = DateTime.fromISO(weeks[i].monday);
       const ends = (l) => DateTime.fromISO(`${monday.plus({ days: l.day }).toISODate()}T${l.end}`);
       const next = lessonsFor(sel, data.lessons)
@@ -170,9 +177,10 @@ export const useTimetableStore = defineStore('timetable', () => {
       if (next) {
         weekIdx.value = i;
         setDay(next.day);
-        return;
+        return true;
       }
     }
+    return false;
   }
 
   watch(weekIdx, () => {
@@ -238,7 +246,9 @@ export const useTimetableStore = defineStore('timetable', () => {
   }
 
   // Navigation
-  function toggle(type) {
+  async function toggle(type) {
+    // "Täna" jumps ahead to the next lessons when today has none left
+    if (type === 'today' && (await showNextLessons())) return;
     day.value = null;
     if (type === 'today') weekIdx.value = currentWeekIdx(index.value?.weeks ?? []);
     displayType.value = type;
@@ -258,7 +268,7 @@ export const useTimetableStore = defineStore('timetable', () => {
 
   return {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError,
-    isCurrentWeek, hasPrevWeek, hasNextWeek, chips, weekRange, updated, lessons, emptyMessage,
+    isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, lessons, emptyMessage,
     init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
   };
 });
