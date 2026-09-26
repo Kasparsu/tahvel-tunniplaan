@@ -10,9 +10,16 @@
   <script>
     // Apply the theme before the app loads so the page does not flash another one.
     // No saved choice means automatic: Techno, or Techno dark when the device prefers dark (as in ThemeSelect.vue).
+    // The theme's background colour is remembered from the last visit (tahvel.themeColor, written by
+    // ThemeSelect.vue) so the browser bar and page background are right before the stylesheet loads.
     try {
-      const t = localStorage.getItem('tahvel.theme');
-      document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'techno-dark' : 'techno');
+      const t = localStorage.getItem('tahvel.theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'techno-dark' : 'techno');
+      document.documentElement.dataset.theme = t;
+      const saved = JSON.parse(localStorage.getItem('tahvel.themeColor') || 'null');
+      if (saved?.theme === t) {
+        document.querySelector('meta[name="theme-color"]').content = saved.color;
+        document.documentElement.style.backgroundColor = saved.color;
+      }
     } catch {}
   </script>
 </head>

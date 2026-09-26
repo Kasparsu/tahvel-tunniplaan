@@ -16,6 +16,15 @@ const AUTO = 'auto';
 const AUTO_LIGHT = 'techno';
 const AUTO_DARK = 'techno-dark';
 const STORAGE_KEY = 'tahvel.theme'; // also read by the inline script in index.html; absent means AUTO
+const COLOR_KEY = 'tahvel.themeColor'; // { theme, color } of the applied theme, for index.html's first paint
+
+/** Any CSS colour (daisyUI's built-in themes use oklch) as #rrggbb, which every browser takes in theme-color. */
+function toHex(color) {
+    const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d');
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 1, 1);
+    return '#' + [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
 
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
 const prefersDark = ref(darkQuery.matches);
@@ -32,7 +41,11 @@ watch(applied, (t) => {
     document.documentElement.dataset.theme = t;
     // match the browser/OS bar (installed app, mobile address bar) to the theme's background
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-base-100').trim();
-    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
+    if (!bg) return;
+    const color = toHex(bg);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+    document.documentElement.style.backgroundColor = color;
+    localStorage.setItem(COLOR_KEY, JSON.stringify({ theme: t, color }));
 }, { immediate: true });
 watch(theme, (t) => (t === AUTO ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, t)));
 </script>
