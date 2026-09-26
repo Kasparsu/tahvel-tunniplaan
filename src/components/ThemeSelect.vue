@@ -28,7 +28,12 @@ if (saved && !THEMES.includes(saved)) localStorage.removeItem(STORAGE_KEY); // a
 const theme = ref(THEMES.includes(saved) ? saved : AUTO);
 const applied = computed(() => (theme.value === AUTO ? (prefersDark.value ? AUTO_DARK : AUTO_LIGHT) : theme.value));
 
-watch(applied, (t) => (document.documentElement.dataset.theme = t), { immediate: true });
+watch(applied, (t) => {
+    document.documentElement.dataset.theme = t;
+    // match the browser/OS bar (installed app, mobile address bar) to the theme's background
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-base-100').trim();
+    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
+}, { immediate: true });
 watch(theme, (t) => (t === AUTO ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, t)));
 </script>
 <template>
