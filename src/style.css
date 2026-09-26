@@ -115,6 +115,68 @@
   --color-today: color-mix(in oklab, var(--color-neutral) 45%, var(--color-base-200));
 }
 
+/*
+ * techno.ee interaction style: outlined buttons fill on hover, filled ones shift shade,
+ * a cyan bar grows along the bottom of hovered items, icons grow a little. All eased over .3s.
+ */
+[data-theme="techno"] {
+  --hover-fill: var(--color-secondary);
+  --hover-fill-content: var(--color-primary);
+}
+[data-theme="techno-dark"] {
+  --hover-fill: var(--color-accent);
+  --hover-fill-content: var(--color-accent-content);
+}
+[data-theme^="techno"] {
+  :is(.chip, .letter) {
+    border-radius: 0;
+  }
+  .chip:not(.btn-primary) {
+    background-color: var(--color-base-100);
+  }
+  .btn {
+    transition: all 0.3s ease-in-out;
+  }
+  .btn:not(.btn-primary, .btn-ghost):hover {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-content);
+  }
+  .btn-primary:not(.btn-outline):hover {
+    background-color: color-mix(in oklab, var(--color-primary) 80%, var(--color-base-content));
+    border-color: color-mix(in oklab, var(--color-primary) 80%, var(--color-base-content));
+  }
+  .btn-ghost:hover {
+    background-color: transparent;
+    border-color: transparent;
+    transform: scale(1.15);
+  }
+  .menu li > button {
+    transition: all 0.3s ease-in-out;
+  }
+  .menu li > button:hover {
+    background-color: var(--hover-fill);
+    color: var(--hover-fill-content);
+  }
+  .lesson {
+    position: relative;
+  }
+  .lesson::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 0;
+    height: 4px;
+    background-color: var(--hover-fill);
+    transition: all 0.3s ease-in-out;
+  }
+  .lesson:hover::after {
+    max-width: 100%;
+  }
+}
+
 /* Tint for today's lessons, derived from the active theme so it works on light themes too */
 @theme {
   --color-today: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-200));
