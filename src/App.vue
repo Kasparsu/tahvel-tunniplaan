@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import DayChips from './components/DayChips.vue';
 import DayWeekToggle from './components/DayWeekToggle.vue';
 import Search from './components/Search.vue';
+import WeekSelect from './components/WeekSelect.vue';
 import LessonsGrid from './components/LessonsGrid.vue';
 import { DateTime, Settings } from 'luxon';
 Settings.defaultZone = 'Europe/Tallinn';
@@ -195,11 +196,7 @@ function shiftWeek(step) {
 
     <div class="mt-3 grid grid-cols-[auto_auto] justify-between gap-2.5 md:grid-cols-[1fr_auto_auto] md:justify-stretch">
       <Search class="col-span-full md:col-span-1" :searchValue="searchValue" @update="autocomplete" @selected="select" :options="options" @clear="clearSearch"></Search>
-      <div class="flex items-center gap-1.5 text-sm whitespace-nowrap text-base-content/60">
-        <button class="btn btn-circle btn-ghost btn-sm" :disabled="weekIdx <= 0" @click="shiftWeek(-1)" aria-label="Eelmine nädal">‹</button>
-        <span :class="{ 'font-semibold text-base-content': isCurrentWeek }">{{ weekRange }}</span>
-        <button class="btn btn-circle btn-ghost btn-sm" :disabled="!index || weekIdx >= index.weeks.length - 1" @click="shiftWeek(1)" aria-label="Järgmine nädal">›</button>
-      </div>
+      <WeekSelect :range="weekRange" :current="isCurrentWeek" :hasPrev="weekIdx > 0" :hasNext="!!index && weekIdx < index.weeks.length - 1" @shift="shiftWeek"></WeekSelect>
       <DayWeekToggle :current="displayType" @toggle="toggle"></DayWeekToggle>
     </div>
 
