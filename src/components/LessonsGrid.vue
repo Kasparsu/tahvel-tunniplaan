@@ -11,7 +11,7 @@ const store = useTimetableStore();
             <div class="grid grid-cols-[auto_auto_1fr] items-start gap-2.5 rounded-box border p-3 md:grid-cols-[30px_140px_1fr] max-[360px]:grid-cols-[30px_140px]"
                 :class="lesson.free ? 'border-dashed border-neutral text-base-content/60' : ['lesson border-base-300', lesson.isToday ? 'bg-today' : 'bg-base-200']">
                 <div class="letter mt-0.5 size-8 rounded-lg text-center text-xl leading-8 font-bold" :class="lesson.free ? 'bg-neutral/40 text-neutral-content/70' : 'bg-neutral text-neutral-content'">{{ lesson.day }}</div>
-                <div class="font-bold tabular-nums">
+                <div class="font-bold whitespace-nowrap tabular-nums">
                     <div>{{ lesson.date }}</div>
                     <div>{{ lesson.time.start }} - {{ lesson.time.end }}</div>
                 </div>
