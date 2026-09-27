@@ -44,7 +44,7 @@ const current = () => props.display || props.options.find((o) => o.value === pro
         <div class="absolute top-full left-0 z-30 mt-2 grid max-h-72 w-max min-w-full gap-1.5 overflow-y-auto rounded-box border border-neutral bg-base-100 p-2 shadow-lg"
             :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }" role="listbox" :aria-label="label">
             <button v-for="o in options" :key="o.value" type="button" role="option" :aria-selected="o.value === modelValue"
-                class="chip btn btn-sm tabular-nums" :class="o.value === modelValue ? 'btn-primary' : 'border-neutral bg-base-300'" @click="pick(o.value)">
+                class="chip btn btn-sm rounded-selector tabular-nums" :class="o.value === modelValue ? 'btn-primary' : 'border-neutral bg-base-300'" @click="pick(o.value)">
                 {{ o.label }}
             </button>
         </div>

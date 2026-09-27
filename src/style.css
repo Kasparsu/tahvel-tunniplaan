@@ -132,9 +132,6 @@
   --hover-fill-content: var(--color-accent-content);
 }
 [data-theme^="techno"] {
-  :is(.chip, .letter) {
-    border-radius: 0;
-  }
   .chip:not(.btn-primary) {
     background-color: var(--color-base-100);
   }
