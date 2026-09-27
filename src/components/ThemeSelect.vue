@@ -1,45 +1,58 @@
 <script setup>
+import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import ChipSelect from './ChipSelect.vue';
+import ThemeTile from './ThemeTile.vue';
 import { useThemeStore } from '../stores/theme';
 
 const themeStore = useThemeStore();
-const { GROUPS, BY_ID, AUTO, lightOptions, darkOptions, sensorSupported, hhmm } = themeStore;
-const { theme, auto, applied, sensorError, sun } = storeToRefs(themeStore);
+const { GROUPS, BY_ID, sensorSupported, hhmm } = themeStore;
+const { theme, auto, kind, sensorError, sun } = storeToRefs(themeStore);
+
+// The theme being picked: 'light' or 'dark' of the switching pair, 'single', or null while no list is open
+const picking = ref(null);
+const pickedId = computed(() => (picking.value === 'single' ? theme.value : picking.value ? auto.value[picking.value] : null));
+/** The themes the open list offers: light ones for the light slot, dark for the dark, all for a single theme. */
+const pickGroups = computed(() =>
+    GROUPS.map((g) => ({ ...g, themes: g.themes.filter((t) => (picking.value === 'light' ? !t.dark : picking.value === 'dark' ? t.dark : true)) })).filter(
+        (g) => g.themes.length,
+    ),
+);
+const PICK_TITLES = { light: 'Vali hele teema', dark: 'Vali tume teema', single: 'Vali teema' };
+
+function toggle(slot) {
+    picking.value = picking.value === slot ? null : slot;
+}
+function pick(id) {
+    if (picking.value === 'single') theme.value = id;
+    else auto.value[picking.value] = id;
+    picking.value = null;
+}
+function setKind(k) {
+    themeStore.setKind(k);
+    picking.value = null;
+}
+const kindTab = (k) => (kind.value === k ? 'tab-active bg-primary! text-primary-content!' : '');
 </script>
 <template>
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Teema">
-        <button :data-theme="theme === AUTO ? applied : auto.light" role="radio" :aria-checked="theme === AUTO" @click="theme = AUTO"
-            class="col-span-full rounded-box border-2 bg-base-100 p-2.5 text-left text-base-content"
-            :class="theme === AUTO ? 'border-primary' : 'border-base-300'">
-            <div class="flex items-center justify-between text-sm font-semibold">
-                Automaatne
-                <span v-if="theme === AUTO" class="text-primary" aria-hidden="true">✓</span>
+    <div class="grid gap-5">
+        <section>
+            <h3 class="mb-2 text-sm font-semibold text-base-content/60">Teema tüüp</h3>
+            <div class="tabs tabs-box w-fit border border-neutral" role="radiogroup" aria-label="Teema tüüp">
+                <button type="button" role="radio" class="tab" :class="kindTab('switching')" :aria-checked="kind === 'switching'" @click="setKind('switching')">
+                    Vahetuv
+                </button>
+                <button type="button" role="radio" class="tab" :class="kindTab('single')" :aria-checked="kind === 'single'" @click="setKind('single')">
+                    Üks teema
+                </button>
             </div>
-            <div class="mt-0.5 text-xs opacity-60">
-                {{ BY_ID[auto.light].label }} või {{ BY_ID[auto.dark].label }},
-                vastavalt {{ { system: 'seadme seadistusele', sun: 'päikesetõusule ja -loojangule', sensor: 'valgusandurile' }[auto.source] }}
-            </div>
-            <div class="mt-1.5 flex gap-1">
-                <!-- dots take their colours from each theme of the pair -->
-                <span :data-theme="auto.light" class="size-3.5 rounded-full bg-primary"></span>
-                <span :data-theme="auto.light" class="size-3.5 rounded-full bg-secondary"></span>
-                <span :data-theme="auto.dark" class="size-3.5 rounded-full bg-primary"></span>
-                <span :data-theme="auto.dark" class="size-3.5 rounded-full bg-base-100 ring-1 ring-base-content/20"></span>
-            </div>
-        </button>
-        <!-- the automatic pair and what switches between them -->
-        <div v-if="theme === AUTO" class="col-span-full grid gap-2 rounded-box border border-base-300 p-3">
-            <div class="flex items-center justify-between gap-3">
-                <span class="text-sm">Hele teema</span>
-                <ChipSelect v-model="auto.light" :options="lightOptions" label="Hele teema" align="right" class="w-48"></ChipSelect>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-                <span class="text-sm">Tume teema</span>
-                <ChipSelect v-model="auto.dark" :options="darkOptions" label="Tume teema" align="right" class="w-48"></ChipSelect>
-            </div>
-            <fieldset class="mt-1 grid gap-1.5">
-                <legend class="mb-1 text-sm">Vaheta</legend>
+            <p class="mt-1.5 text-xs text-base-content/60">
+                {{ kind === 'switching' ? 'Hele ja tume teema, mis vahetuvad ise.' : 'Alati sama teema.' }}
+            </p>
+        </section>
+
+        <section v-if="kind === 'switching'">
+            <h3 class="mb-2 text-sm font-semibold text-base-content/60">Millal vahetada</h3>
+            <fieldset class="grid gap-1.5">
                 <label class="flex cursor-pointer items-center gap-2.5">
                     <input type="radio" class="radio radio-primary radio-sm" value="system" v-model="auto.source" />
                     <span class="text-sm">seadme heleda või tumeda režiimi järgi</span>
@@ -56,26 +69,34 @@ const { theme, auto, applied, sensorError, sun } = storeToRefs(themeStore);
                     <span class="text-sm">valgusanduri järgi</span>
                 </label>
             </fieldset>
-            <p v-if="!sensorSupported" class="text-xs text-base-content/60">See brauser ei anna valgusandurile ligi.</p>
-            <p v-else-if="auto.source === 'sensor' && sensorError" class="text-xs text-error">{{ sensorError }}</p>
-        </div>
-        <template v-for="group in GROUPS" :key="group.name">
-            <h4 class="col-span-full mt-3 text-xs font-semibold tracking-wide text-base-content/60 uppercase">{{ group.name }}</h4>
-            <!-- each tile is rendered in its own theme as a preview -->
-            <button v-for="t in group.themes" :key="t.id" :data-theme="t.id" role="radio" :aria-checked="t.id === theme" @click="theme = t.id"
-                class="rounded-box border-2 bg-base-100 p-2.5 text-left text-base-content"
-                :class="t.id === theme ? 'border-primary' : 'border-base-300'">
-                <div class="flex items-center justify-between gap-1 text-sm font-semibold">
-                    {{ t.label }}
-                    <span v-if="t.id === theme" class="text-primary" aria-hidden="true">✓</span>
-                </div>
-                <div class="mt-1.5 flex gap-1">
-                    <span class="size-3.5 rounded-full bg-primary"></span>
-                    <span class="size-3.5 rounded-full bg-secondary"></span>
-                    <span class="size-3.5 rounded-full bg-accent"></span>
-                    <span class="size-3.5 rounded-full bg-neutral"></span>
-                </div>
-            </button>
-        </template>
+            <p v-if="!sensorSupported" class="mt-1.5 text-xs text-base-content/60">See brauser ei anna valgusandurile ligi.</p>
+            <p v-else-if="auto.source === 'sensor' && sensorError" class="mt-1.5 text-xs text-error">{{ sensorError }}</p>
+        </section>
+
+        <section>
+            <h3 class="mb-2 text-sm font-semibold text-base-content/60">{{ kind === 'switching' ? 'Teemad' : 'Teema' }}</h3>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <template v-if="kind === 'switching'">
+                    <ThemeTile :id="auto.light" :label="BY_ID[auto.light].label" caption="Hele" :highlighted="picking === 'light'"
+                        :aria-expanded="picking === 'light'" @click="toggle('light')"></ThemeTile>
+                    <ThemeTile :id="auto.dark" :label="BY_ID[auto.dark].label" caption="Tume" :highlighted="picking === 'dark'"
+                        :aria-expanded="picking === 'dark'" @click="toggle('dark')"></ThemeTile>
+                </template>
+                <ThemeTile v-else :id="theme" :label="BY_ID[theme].label" caption="Kasutusel" :highlighted="picking === 'single'"
+                    :aria-expanded="picking === 'single'" @click="toggle('single')"></ThemeTile>
+            </div>
+            <p v-if="!picking" class="mt-1.5 text-xs text-base-content/60">Puuduta teemat, et valida teine.</p>
+        </section>
+
+        <section v-if="picking">
+            <h3 class="mb-2 text-sm font-semibold text-base-content/60">{{ PICK_TITLES[picking] }}</h3>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" :aria-label="PICK_TITLES[picking]">
+                <template v-for="group in pickGroups" :key="group.name">
+                    <h4 class="col-span-full mt-2 text-xs font-semibold tracking-wide text-base-content/60 uppercase">{{ group.name }}</h4>
+                    <ThemeTile v-for="t in group.themes" :key="t.id" :id="t.id" :label="t.label" role="radio" :aria-checked="t.id === pickedId"
+                        :highlighted="t.id === pickedId" :checked="t.id === pickedId" @click="pick(t.id)"></ThemeTile>
+                </template>
+            </div>
+        </section>
     </div>
 </template>

@@ -28,7 +28,7 @@ const ALL = GROUPS.flatMap((g) => g.themes);
 const BY_ID = Object.fromEntries(ALL.map((t) => [t.id, t]));
 const THEMES = ALL.map((t) => t.id);
 
-// No saved theme means automatic: a light and a dark theme, switched by `source`:
+// No saved theme means switching: a light and a dark theme (Techno and Techno dark by default), switched by `source`:
 // the device's preference ('system'), sunrise and sunset in Tallinn ('sun') or the light sensor ('sensor')
 const AUTO = 'auto';
 const STORAGE_KEY = 'tahvel.theme'; // also read by the inline script in index.html; absent means AUTO
@@ -70,8 +70,6 @@ export const useThemeStore = defineStore('theme', () => {
     };
   }
   const auto = ref(loadAuto());
-  const lightOptions = ALL.filter((t) => !t.dark).map((t) => ({ value: t.id, label: t.label }));
-  const darkOptions = ALL.filter((t) => t.dark).map((t) => ({ value: t.id, label: t.label }));
 
   // Light sensor (Generic Sensor API; few browsers expose it). Dark below DARK_LUX, light above LIGHT_LUX,
   // in between keeps the current one, and a change has to hold for SETTLE_MS so a passing shadow does not flip it.
@@ -159,9 +157,17 @@ export const useThemeStore = defineStore('theme', () => {
   }, { immediate: true });
   watch(theme, (t) => (t === AUTO ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, t)));
 
+  /** 'switching' (the light/dark pair) or 'single' (one theme throughout). */
+  const kind = computed(() => (theme.value === AUTO ? 'switching' : 'single'));
+  /** A single theme starts from the one showing, so nothing changes until another is picked. */
+  function setKind(k) {
+    if (k === 'switching') theme.value = AUTO;
+    else if (theme.value === AUTO) theme.value = applied.value;
+  }
+
   return {
     GROUPS, BY_ID, AUTO,
-    theme, auto, applied, lightOptions, darkOptions,
+    theme, auto, applied, kind, setKind,
     sensorSupported, sensorError, sun, hhmm,
   };
 });

@@ -11,7 +11,6 @@ const props = defineProps({
     label: { type: String, required: true }, // accessible name
     display: { type: String, default: '' },
     columns: { type: Number, default: 2 },
-    align: { type: String, default: 'left' }, // which edge of the button the option panel lines up with
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -42,8 +41,7 @@ const current = () => props.display || props.options.find((o) => o.value === pro
             <span class="tabular-nums">{{ current() }}</span>
             <svg class="size-3 transition-transform group-open:rotate-180" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
         </summary>
-        <div class="absolute top-full z-30 mt-2 grid max-h-72 w-max min-w-full gap-1.5 overflow-y-auto rounded-box border border-neutral bg-base-100 p-2 shadow-lg"
-            :class="align === 'right' ? 'right-0' : 'left-0'"
+        <div class="absolute top-full left-0 z-30 mt-2 grid max-h-72 w-max min-w-full gap-1.5 overflow-y-auto rounded-box border border-neutral bg-base-100 p-2 shadow-lg"
             :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }" role="listbox" :aria-label="label">
             <button v-for="o in options" :key="o.value" type="button" role="option" :aria-selected="o.value === modelValue"
                 class="chip btn btn-sm tabular-nums" :class="o.value === modelValue ? 'btn-primary' : 'border-neutral bg-base-300'" @click="pick(o.value)">
