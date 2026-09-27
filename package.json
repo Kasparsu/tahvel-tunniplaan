@@ -2,7 +2,7 @@
   "name": "tahvel-tunniplaan",
   "private": true,
   "scripts": {
-    "fetch": "bun scripts/fetch-edupage.ts",
+    "fetch": "bun scripts/fetch-timetable.ts",
     "themes": "bun scripts/gen-themes.ts",
     "worker:deploy": "bunx wrangler deploy -c worker/wrangler.jsonc",
     "dev": "vite",

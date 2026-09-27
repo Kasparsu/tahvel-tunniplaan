@@ -19,9 +19,11 @@ const store = useTimetableStore();
                 <div v-else class="max-[360px]:col-span-full">
                     <div class="text-[15px] font-bold md:text-base">{{ lesson.name }}</div>
                     <div class="flex flex-wrap gap-x-1.5 text-[13px] text-base-content/60">
+                        <span v-if="lesson.campus" class="font-semibold text-base-content/80">{{ lesson.campus }}</span>
                         <span v-if="lesson.room">Ruum: {{ lesson.room }}</span>
                         <span v-if="lesson.showGroup && lesson.group">Rühm: {{ lesson.group }}</span>
                         <span v-if="!lesson.showGroup && lesson.teacher">Õpetaja: {{ lesson.teacher }}</span>
+                        <span v-if="lesson.note" class="basis-full italic">{{ lesson.note }}</span>
                     </div>
                 </div>
             </div>

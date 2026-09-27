@@ -12,7 +12,13 @@ const store = useTimetableStore();
         </label>
         <ul v-if="store.options.length" class="menu absolute inset-x-0 top-full z-20 mt-1.5 max-h-75 w-full flex-nowrap overflow-y-auto rounded-box border border-neutral bg-base-100 p-1">
             <li v-for="option in store.options" :key="option.id">
-                <button class="font-semibold" @click="store.select(option)">{{ option.name }}</button>
+                <button class="flex justify-between font-semibold" @click="store.select(option)">
+                    {{ option.name }}
+                    <!-- the campuses it has lessons at -->
+                    <span class="flex gap-1">
+                        <span v-for="c in option.campuses" :key="c" class="badge badge-ghost badge-sm font-normal">{{ c }}</span>
+                    </span>
+                </button>
             </li>
         </ul>
     </div>

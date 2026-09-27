@@ -1,151 +1,170 @@
 /**
- * Snapshot the Techno TLN Kesklinn timetable from Edupage into static JSON.
+ * Snapshot Techno TLN's timetables into static JSON for the app.
  *
- * Edupage sends no CORS headers, so the browser cannot ask it directly. Instead this runs
- * in the deploy workflow (on a schedule) and writes public/data/, which Vite copies into
- * the site: index.json lists the published weeks and everything searchable, and
- * week-<monday>.json holds that week's lessons with times already resolved, plus the bell
- * schedule (periods) so the app can show free periods between lessons.
+ * Edupage and Tahvel send no CORS headers, so the browser cannot ask them directly. Instead this
+ * runs in the deploy workflow (on a schedule) and writes public/data/, which Vite copies into the
+ * site. The campuses use different systems (see SOURCES); their lessons are merged, so one search
+ * covers every campus and a teacher working at several shows up once:
  *
- * Only weeks the school has published (hidden: false) are fetched.
+ *   index.json           sources, campuses, the weeks available, every class and teacher with the
+ *                        campuses they have lessons at
+ *   week-<monday>.json   that week's lessons (each tagged with its campus) and each campus's bells
  *
- * Edupage's school server drops connections from some GitHub Actions IPs, so the deploy
- * workflow sets EDUPAGE_PROXY to the Cloudflare Worker in worker/, which relays the requests.
+ * Kesklinn and Mustamäe each have their own Edupage; Järve and Lasnamäe share Tahvel. Each lesson's
+ * campus comes from its room when that says (groups and teachers do move between campuses), else
+ * from which Edupage it is in, else from its group code (K-, M-, J-, L-).
  *
- *   bun scripts/fetch-edupage.ts
- *   EDUPAGE_PROXY=https://tahvel-edupage-proxy.<account>.workers.dev bun scripts/fetch-edupage.ts
+ * Weeks start from last week, so a deploy does not keep fetching the past.
+ *
+ * Edupage's school server drops connections from some GitHub Actions IPs, so the deploy workflow
+ * sets FETCH_PROXY to the Cloudflare Worker in worker/, which relays the requests.
+ *
+ *   bun run fetch
+ *   FETCH_PROXY=https://tahvel-edupage-proxy.<account>.workers.dev bun run fetch
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { fetchEdupage } from "./providers/edupage";
+import { fetchTahvel } from "./providers/tahvel";
+import { addDays, byTime, CAMPUSES, campusRoom, mondayOf, upstream, type Campus, type Lesson, type Period, type SourceData } from "./providers/types";
 
-const SCHOOL = process.env.EDUPAGE_SCHOOL ?? "kesklinn-techno";
-const SOURCE = `https://${SCHOOL}.edupage.org`;
-const SERVER = `${process.env.EDUPAGE_PROXY?.replace(/\/$/, "") ?? SOURCE}/timetable/server`;
+type Source = { id: string; label: string; url: string } & (
+  | { provider: "edupage"; school: string; campus: Campus }
+  | { provider: "tahvel"; schoolId: number; buildings: Record<string, Campus> }
+);
+
+/** Credited in this order. Edupage first so its teacher spelling and bell times win. */
+const SOURCES: Source[] = [
+  { id: "kesklinn", label: "Edupage Kesklinn", provider: "edupage", school: "kesklinn-techno", campus: "K", url: "https://kesklinn-techno.edupage.org/timetable/" },
+  { id: "mustamae", label: "Edupage Mustamäe", provider: "edupage", school: "mustamae-techno", campus: "M", url: "https://mustamae-techno.edupage.org/timetable/" },
+  {
+    id: "tahvel",
+    label: "Tahvel",
+    provider: "tahvel",
+    schoolId: 24,
+    // Tahvel's building codes; Lasnamäe's room codes (E243) do not carry the campus letter
+    buildings: { Peamaja: "J", Praktikamaja: "J", PM: "L", TK: "L", A: "K" },
+    url: "https://tahveltp.edu.ee/#/schoolBoard/24",
+  },
+];
+/** Tahvel has every week of the year; fetch this many from this week on (it is ~2.5 MB per week). */
+const TAHVEL_WEEKS_AHEAD = 4;
+
 const OUT = new URL("../public/data/", import.meta.url).pathname;
+const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Tallinn" });
+const thisMonday = mondayOf(today);
+const fromMonday = addDays(thisMonday, -7);
 
-async function call<T>(script: string, func: string, args: unknown[]): Promise<T> {
-  const res = await fetch(`${SERVER}/${script}?__func=${func}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ __args: args, __gsh: "00000000" }),
-    // a blocked connection otherwise hangs for the OS connect timeout (over 2 minutes)
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) throw new Error(`${func}: HTTP ${res.status}`);
-  const body = (await res.json()) as { r?: T };
-  if (!body.r) throw new Error(`${func}: empty response`);
-  return body.r;
+// --- fetch every source ---------------------------------------------------------------------
+
+const data = new Map<string, SourceData>();
+for (const s of SOURCES) {
+  if (s.provider !== "edupage") continue;
+  console.log(`${s.label} (${s.school})`);
+  const server = upstream(`${s.school}.edupage.org`, `edupage/${s.school}`);
+  data.set(s.id, await fetchEdupage(server, s.campus, fromMonday, console.log));
+}
+// Tahvel for the same weeks the Edupage schools publish, and at least a few weeks ahead
+const edupageMondays = [...data.values()].flatMap((d) => d.weeks.map((w) => w.monday));
+const aheadMondays = Array.from({ length: TAHVEL_WEEKS_AHEAD + 2 }, (_, i) => addDays(fromMonday, i * 7));
+const tahvelMondays = [...new Set([...aheadMondays, ...edupageMondays])].sort();
+for (const s of SOURCES) {
+  if (s.provider !== "tahvel") continue;
+  console.log(`${s.label} (school ${s.schoolId})`);
+  data.set(s.id, await fetchTahvel(upstream("tahveltp.edu.ee", "tahvel"), s.schoolId, s.buildings, tahvelMondays, console.log));
 }
 
-/** Edupage's school year starts in August ("schoolyear_turnover": "08-01"). */
-function schoolYear(now = new Date()): number {
-  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-}
+// --- one name per teacher -------------------------------------------------------------------
 
-/** The Monday inside the week that starts on `datefrom` (published weeks start on Sunday). */
-function mondayOf(datefrom: string): string {
-  const d = new Date(`${datefrom}T12:00:00Z`);
-  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-type Row = Record<string, any>;
-
-interface Lesson {
-  day: number; // 0 = Monday
-  start: string;
-  end: string;
-  subject: string;
-  classes: string[];
-  groups: string[]; // empty = whole class
-  teachers: string[];
-  rooms: string[];
-}
-
-interface Period {
-  start: string;
-  end: string;
-}
-
-function week(r: Row): { lessons: Lesson[]; periods: Period[]; classes: string[]; teachers: string[] } {
-  const T: Record<string, Row[]> = Object.fromEntries(r.dbiAccessorRes.tables.map((t: Row) => [t.id, t.data_rows]));
-  const byId = (name: string) => new Map((T[name] ?? []).map((x) => [x.id, x]));
-  const periods = byId("periods");
-  const subjects = byId("subjects");
-  const classes = byId("classes");
-  const teachers = byId("teachers");
-  const groups = byId("groups");
-  const rooms = byId("classrooms");
-  const lessonsById = byId("lessons");
-  const clean = (s: unknown) => String(s ?? "").replace(/ /g, " ").trim();
-
-  const out: Lesson[] = [];
-  for (const card of T.cards ?? []) {
-    // Unplaced cards have no period and no day.
-    if (!card.period || !card.days) continue;
-    const lesson = lessonsById.get(card.lessonid);
-    if (!lesson) continue;
-    const first = Number(card.period);
-    const last = first + Math.max(1, Number(lesson.durationperiods) || 1) - 1;
-    const startP = periods.get(String(first));
-    const endP = periods.get(String(last)) ?? startP;
-    if (!startP) continue;
-    const day = String(card.days).indexOf("1");
-    if (day < 0) continue;
-    out.push({
-      day,
-      start: startP.starttime,
-      end: endP!.endtime,
-      subject: clean(subjects.get(lesson.subjectid)?.name),
-      classes: (lesson.classids ?? []).map((id: string) => clean(classes.get(id)?.short)).filter(Boolean),
-      groups: (lesson.groupids ?? [])
-        .map((id: string) => groups.get(id))
-        .filter((g: Row | undefined) => g && !g.entireclass)
-        .map((g: Row) => clean(g.name)),
-      teachers: (lesson.teacherids ?? []).map((id: string) => clean(teachers.get(id)?.name)).filter(Boolean),
-      rooms: (card.classroomids ?? []).map((id: string) => clean(rooms.get(id)?.short)).filter(Boolean),
-    });
+const words = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const teacherNames = SOURCES.flatMap((s) => data.get(s.id)!.teachers);
+const wordSet = (name: string) => words(name).sort().join(" ");
+const canonical = new Map<string, string>(); // word set -> first spelling seen
+for (const name of teacherNames) if (!canonical.has(wordSet(name))) canonical.set(wordSet(name), name);
+const fullNames = [...new Set(canonical.values())].filter((n) => words(n).length > 1);
+/** Same person, same name: word order does not matter, and a bare surname maps to the one full name that starts with it. */
+function teacherKey(name: string): string {
+  const w = words(name);
+  if (w.length === 1) {
+    const matches = fullNames.filter((n) => words(n)[0] === w[0]);
+    if (matches.length === 1) return matches[0];
   }
-  out.sort((a, b) => a.day - b.day || a.start.localeCompare(b.start) || a.classes.join().localeCompare(b.classes.join()));
-  return {
-    lessons: out,
-    periods: [...periods.values()]
-      .filter((p) => p.starttime && p.endtime)
-      .map((p) => ({ start: p.starttime, end: p.endtime }))
-      .sort((a, b) => a.start.localeCompare(b.start)),
-    classes: [...classes.values()].map((c) => clean(c.short)).filter(Boolean),
-    teachers: [...teachers.values()].map((t) => clean(t.name)).filter(Boolean),
-  };
+  return canonical.get(wordSet(name)) ?? name;
 }
 
-const year = Number(process.env.EDUPAGE_YEAR ?? schoolYear());
-const viewer = await call<Row>("ttviewer.js", "getTTViewerData", [null, year]);
-const published = (viewer.regular?.timetables ?? []).filter((t: Row) => !t.hidden);
-if (!published.length) throw new Error(`no published timetables for ${year}`);
+// --- merge per week -------------------------------------------------------------------------
+
+const weeks = new Map<string, { lessons: Lesson[]; periods: Partial<Record<Campus, Period[]>> }>();
+const classes = new Map<string, Set<Campus>>();
+const teachers = new Map<string, Set<Campus>>();
+const add = (map: Map<string, Set<Campus>>, name: string, campus?: Campus) => {
+  const set = map.get(name) ?? new Set();
+  if (campus) set.add(campus);
+  map.set(name, set);
+};
+for (const s of SOURCES) {
+  for (const w of data.get(s.id)!.weeks) {
+    const week = weeks.get(w.monday) ?? { lessons: [], periods: {} };
+    // the first source with a campus's bells wins: Edupage's are published, Tahvel's derived
+    for (const [campus, bells] of Object.entries(w.periods) as [Campus, Period[]][]) week.periods[campus] ??= bells;
+    for (const l of w.lessons) {
+      week.lessons.push({ ...l, teachers: [...new Set(l.teachers.map(teacherKey))] });
+    }
+    weeks.set(w.monday, week);
+  }
+}
+
+// --- one lesson per lesson --------------------------------------------------------------------
+
+/**
+ * A lesson entered in two systems (a Kesklinn group taught at Lasnamäe is in Kesklinn's Edupage
+ * with the room "Lasnamäe" and in Tahvel with the real room) is kept once, with the real room.
+ */
+function dedupe(lessons: Lesson[]): Lesson[] {
+  const key = (l: Lesson) => JSON.stringify([l.day, l.start, l.end, l.subject.toLowerCase(), [...l.classes].sort(), [...l.teachers].sort()]);
+  const placeholder = (l: Lesson) => l.rooms.length === 0 || l.rooms.every((r) => campusRoom(r));
+  const kept = new Map<string, Lesson>();
+  for (const l of lessons) {
+    const other = kept.get(key(l));
+    if (!other) kept.set(key(l), l);
+    else if (placeholder(other) && !placeholder(l)) kept.set(key(l), { ...l, note: l.note ?? other.note });
+  }
+  return [...kept.values()];
+}
+let duplicates = 0;
+for (const week of weeks.values()) {
+  const before = week.lessons.length;
+  week.lessons = dedupe(week.lessons);
+  duplicates += before - week.lessons.length;
+  for (const l of week.lessons) {
+    l.classes.forEach((c) => add(classes, c, l.campus));
+    l.teachers.forEach((t) => add(teachers, t, l.campus));
+  }
+}
+
+// --- write ----------------------------------------------------------------------------------
 
 mkdirSync(OUT, { recursive: true });
-const weeks = [];
-const classes = new Set<string>();
-const teachers = new Set<string>();
-for (const t of published) {
-  const data = week(await call<Row>("regulartt.js", "regularttGetData", [null, t.tt_num]));
-  const monday = mondayOf(t.datefrom);
+for (const f of readdirSync(OUT)) if (/^week-.*\.json$/.test(f)) rmSync(`${OUT}${f}`);
+const index = [];
+for (const [monday, week] of [...weeks].sort(([a], [b]) => a.localeCompare(b))) {
   const file = `week-${monday}.json`;
-  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, name: t.text, periods: data.periods, lessons: data.lessons }));
-  data.classes.forEach((c) => classes.add(c));
-  data.teachers.forEach((c) => teachers.add(c));
-  weeks.push({ monday, name: t.text, file, lessons: data.lessons.length });
-  console.log(`${monday}  ${t.text}  ${data.lessons.length} lessons`);
+  week.lessons.sort(byTime);
+  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, periods: week.periods, lessons: week.lessons }));
+  index.push({ monday, file, lessons: week.lessons.length });
 }
-weeks.sort((a, b) => a.monday.localeCompare(b.monday));
 const sortEt = (a: string, b: string) => a.localeCompare(b, "et");
+const campusOrder = Object.keys(CAMPUSES) as Campus[];
+const list = (map: Map<string, Set<Campus>>) =>
+  [...map].sort(([a], [b]) => sortEt(a, b)).map(([name, campuses]) => ({ name, campuses: campusOrder.filter((c) => campuses.has(c)) }));
 writeFileSync(
   `${OUT}index.json`,
   JSON.stringify({
-    source: `${SOURCE}/timetable/`,
     generated: new Date().toISOString(),
-    weeks,
-    classes: [...classes].sort(sortEt),
-    teachers: [...teachers].sort(sortEt),
+    sources: SOURCES.map(({ id, label, url }) => ({ id, label, url })),
+    campuses: CAMPUSES,
+    weeks: index,
+    classes: list(classes),
+    teachers: list(teachers),
   }),
 );
-console.log(`${weeks.length} weeks, ${classes.size} classes, ${teachers.size} teachers -> ${OUT} (via ${SERVER})`);
+console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);

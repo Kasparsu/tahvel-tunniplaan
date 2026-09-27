@@ -34,7 +34,9 @@ onMounted(store.init);
     </div>
 
     <footer class="mt-6 mb-2 text-center text-xs text-base-content/60" v-if="store.index">
-      Andmed: <a class="link link-secondary" :href="store.index.source" target="_blank" rel="noopener">Edupage</a>, uuendatud {{ store.updated }}
+      Andmed:
+      <template v-for="(s, i) in store.sources" :key="s.id">{{ i ? ', ' : '' }}<a class="link link-secondary" :href="s.url" target="_blank" rel="noopener">{{ s.label }}</a></template>;
+      uuendatud {{ store.updated }}
     </footer>
   </div>
 </template>

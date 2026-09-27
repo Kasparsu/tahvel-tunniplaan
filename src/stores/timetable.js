@@ -7,7 +7,7 @@ Settings.defaultZone = 'Europe/Tallinn';
 const DAY_LETTERS = ['E', 'T', 'K', 'N', 'R', 'L', 'P']; // Mon-Sun
 const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev'];
 
-// Snapshot of the Edupage timetable, written by scripts/fetch-edupage.ts at deploy time.
+// Snapshot of every campus's timetable (Edupage and Tahvel), written by scripts/fetch-timetable.ts at deploy time.
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
 const STORAGE_KEY = 'tahvel.selection';
 
@@ -40,6 +40,13 @@ function freeBlocks(periods, from, to) {
     else blocks.push({ start: p.start, end: p.end });
   }
   return blocks;
+}
+
+/** A note about one date ("25.09 iseseisva õppe päev") belongs only on that day's lessons; undated notes on all. */
+function noteFor(note, date) {
+  const m = note?.match(/^(\d{1,2})\.(\d{1,2})\b/);
+  if (!m) return note;
+  return Number(m[1]) === date.day && Number(m[2]) === date.month ? note : undefined;
 }
 
 /** This week if it is published, otherwise the nearest week that is. */
@@ -86,6 +93,14 @@ export const useTimetableStore = defineStore('timetable', () => {
   const weekRange = computed(() => `${monday.value.toFormat('dd.MM')} - ${monday.value.plus({ days: 6 }).toFormat('dd.MM')}`);
 
   const updated = computed(() => (index.value ? DateTime.fromISO(index.value.generated).toFormat('dd.MM HH:mm') : ''));
+  const sources = computed(() => index.value?.sources ?? []);
+  const campusName = (c) => index.value?.campuses?.[c] ?? c;
+  /** Campuses the selected group or teacher has lessons at; cards name the campus when there are several. */
+  const selectedCampuses = computed(() => {
+    const sel = selectedSearch.value;
+    const pool = sel?.type === 'teacher' ? index.value?.teachers : index.value?.classes;
+    return pool?.find((e) => e.name === sel.name)?.campuses ?? [];
+  });
 
   const lessons = computed(() => {
     const sel = selectedSearch.value;
@@ -95,13 +110,14 @@ export const useTimetableStore = defineStore('timetable', () => {
     if (displayType.value === 'today') list = isCurrentWeek.value ? list.filter((l) => l.day === todayIdx.value) : [];
     if (displayType.value === 'day') list = list.filter((l) => l.day === day.value);
 
-    // Free periods before the first lesson and between lessons, not after the last one.
-    const periods = weekData.value.periods ?? [];
+    // Free periods before the first lesson and between lessons, not after the last one,
+    // using the bell times of the campus the next lesson is at.
+    const periodsOf = (l) => weekData.value.periods?.[l.campus] ?? [];
     const withFree = [];
     let cursor = { day: -1 };
     for (const l of list) {
-      if (l.day !== cursor.day) cursor = { day: l.day, end: periods[0]?.start ?? l.start };
-      for (const b of freeBlocks(periods, cursor.end, l.start)) withFree.push({ day: l.day, ...b, free: true });
+      if (l.day !== cursor.day) cursor = { day: l.day, end: periodsOf(l)[0]?.start ?? l.start };
+      for (const b of freeBlocks(periodsOf(l), cursor.end, l.start)) withFree.push({ day: l.day, ...b, free: true });
       withFree.push(l);
       if (l.end > cursor.end) cursor.end = l.end;
     }
@@ -122,6 +138,8 @@ export const useTimetableStore = defineStore('timetable', () => {
         room: l.rooms.join(', '),
         group: [...l.classes, ...l.groups].join(' '),
         teacher: l.teachers.join(', '),
+        note: noteFor(l.note, date),
+        campus: selectedCampuses.value.length > 1 && l.campus ? campusName(l.campus) : '',
         showGroup: sel.type === 'teacher',
       };
     });
@@ -211,7 +229,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     if (!saved?.name) return;
     // Selections saved by the old Tahvel version store Tahvel's spelling
     // ("Kaspar Martin Suursalu"); Edupage has "Suursalu Kaspar Martin". Same words, so match on those.
-    const pool = saved.type === 'teacher' ? index.value.teachers : index.value.classes;
+    const pool = (saved.type === 'teacher' ? index.value.teachers : index.value.classes).map((e) => e.name);
     const name = pool.find((n) => n === saved.name) ?? pool.find((n) => sameWords(n, saved.name));
     if (name) select({ type: saved.type, name });
     else localStorage.removeItem(STORAGE_KEY);
@@ -222,9 +240,9 @@ export const useTimetableStore = defineStore('timetable', () => {
       options.value = [];
       return;
     }
-    const hit = (type) => (name) => ({ id: `${type}:${name}`, name, type });
-    const teachers = index.value.teachers.filter((n) => matches(value, n)).map(hit('teacher'));
-    const groups = index.value.classes.filter((n) => matches(value, n)).map(hit('group'));
+    const hit = (type) => (e) => ({ id: `${type}:${e.name}`, name: e.name, type, campuses: e.campuses.map(campusName) });
+    const teachers = index.value.teachers.filter((e) => matches(value, e.name)).map(hit('teacher'));
+    const groups = index.value.classes.filter((e) => matches(value, e.name)).map(hit('group'));
     // a space usually means a person's name, otherwise a group code
     options.value = (value.includes(' ') ? [...teachers, ...groups] : [...groups, ...teachers]).slice(0, 30);
   }
@@ -268,7 +286,7 @@ export const useTimetableStore = defineStore('timetable', () => {
 
   return {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError,
-    isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, lessons, emptyMessage,
+    isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
   };
 });
