@@ -6,7 +6,7 @@ const store = useTimetableStore();
     <div class="relative">
         <!-- focus ring in the theme's primary colour instead of daisyUI's default text colour -->
         <label class="input w-full focus-within:[--input-color:var(--color-primary)]">
-            <input v-model="store.searchValue" @input="store.autocomplete(store.searchValue)" type="text" class="text-base" placeholder="Otsi õpperühma või õpetajat…" autocomplete="off"
+            <input v-model="store.searchValue" @input="store.autocomplete(store.searchValue)" type="text" class="text-base" placeholder="Otsi õpperühma, õpetajat või ruumi…" autocomplete="off"
                 aria-autocomplete="list" :aria-expanded="store.options.length > 0" />
             <button v-if="store.searchValue" class="btn btn-ghost btn-xs btn-circle text-lg text-base-content/60" title="Puhasta" @click="store.clearSearch()">×</button>
         </label>
@@ -16,6 +16,7 @@ const store = useTimetableStore();
                     {{ option.name }}
                     <!-- the campuses it has lessons at -->
                     <span class="flex gap-1">
+                        <span v-if="option.type === 'room'" class="badge badge-outline badge-sm font-normal">Ruum</span>
                         <span v-for="c in option.campuses" :key="c" class="badge badge-ghost badge-sm font-normal">{{ c }}</span>
                     </span>
                 </button>

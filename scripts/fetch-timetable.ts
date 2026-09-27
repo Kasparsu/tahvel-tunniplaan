@@ -6,8 +6,8 @@
  * site. The campuses use different systems (see SOURCES); their lessons are merged, so one search
  * covers every campus and a teacher working at several shows up once:
  *
- *   index.json           sources, campuses, the weeks available, every class and teacher with the
- *                        campuses they have lessons at
+ *   index.json           sources, campuses, the weeks available, every class, teacher and room with
+ *                        the campuses they have lessons at
  *   week-<monday>.json   that week's lessons (each tagged with its campus) and each campus's bells
  *
  * Kesklinn and Mustamäe each have their own Edupage; Järve and Lasnamäe share Tahvel. Each lesson's
@@ -96,6 +96,7 @@ function teacherKey(name: string): string {
 const weeks = new Map<string, { lessons: Lesson[]; periods: Partial<Record<Campus, Period[]>> }>();
 const classes = new Map<string, Set<Campus>>();
 const teachers = new Map<string, Set<Campus>>();
+const rooms = new Map<string, Set<Campus>>();
 const add = (map: Map<string, Set<Campus>>, name: string, campus?: Campus) => {
   const set = map.get(name) ?? new Set();
   if (campus) set.add(campus);
@@ -138,6 +139,8 @@ for (const week of weeks.values()) {
   for (const l of week.lessons) {
     l.classes.forEach((c) => add(classes, c, l.campus));
     l.teachers.forEach((t) => add(teachers, t, l.campus));
+    // placeholder rooms named after a campus are not rooms anyone can look up
+    l.rooms.filter((r) => !campusRoom(r)).forEach((r) => add(rooms, r, l.campus));
   }
 }
 
@@ -165,6 +168,7 @@ writeFileSync(
     weeks: index,
     classes: list(classes),
     teachers: list(teachers),
+    rooms: list(rooms),
   }),
 );
-console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);
+console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${rooms.size} rooms, ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);

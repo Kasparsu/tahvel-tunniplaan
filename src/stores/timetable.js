@@ -27,8 +27,11 @@ async function getJson(file) {
   return response.json();
 }
 
-const lessonsFor = (sel, lessons) =>
-  lessons.filter((l) => (sel.type === 'teacher' ? l.teachers.includes(sel.name) : l.classes.includes(sel.name)));
+// the lesson field a selection of each type is looked up in
+const FIELD = { group: 'classes', teacher: 'teachers', room: 'rooms' };
+const lessonsFor = (sel, lessons) => lessons.filter((l) => l[FIELD[sel.type]].includes(sel.name));
+/** index.json's list of groups, teachers or rooms */
+const poolFor = (index, type) => (type === 'teacher' ? index.teachers : type === 'room' ? index.rooms : index.classes) ?? [];
 
 /** Bell periods lying wholly between `from` and `to`, back-to-back ones merged (08:30-09:15 + 09:15-10:00 = one block). */
 function freeBlocks(periods, from, to) {
@@ -98,8 +101,8 @@ export const useTimetableStore = defineStore('timetable', () => {
   /** Campuses the selected group or teacher has lessons at; cards name the campus when there are several. */
   const selectedCampuses = computed(() => {
     const sel = selectedSearch.value;
-    const pool = sel?.type === 'teacher' ? index.value?.teachers : index.value?.classes;
-    return pool?.find((e) => e.name === sel.name)?.campuses ?? [];
+    if (!sel || !index.value) return [];
+    return poolFor(index.value, sel.type).find((e) => e.name === sel.name)?.campuses ?? [];
   });
 
   const lessons = computed(() => {
@@ -140,14 +143,17 @@ export const useTimetableStore = defineStore('timetable', () => {
         teacher: l.teachers.join(', '),
         note: noteFor(l.note, date),
         campus: selectedCampuses.value.length > 1 && l.campus ? campusName(l.campus) : '',
-        showGroup: sel.type === 'teacher',
+        // each card leaves out what was searched for: a group's name the teacher, a room's the group and teacher
+        showGroup: sel.type !== 'group',
+        showTeacher: sel.type !== 'teacher',
+        showRoom: sel.type !== 'room',
       };
     });
   });
 
   const emptyMessage = computed(() => {
     if (loadError.value) return loadError.value;
-    if (!selectedSearch.value) return 'Vali õpperühm või õpetaja, et näha tunniplaani.';
+    if (!selectedSearch.value) return 'Vali õpperühm, õpetaja või ruum, et näha tunniplaani.';
     if (weekData.value && !lessons.value.length) return displayType.value === 'week' ? 'Sel nädalal pole tunde.' : 'Sel päeval pole tunde.';
     return '';
   });
@@ -229,7 +235,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     if (!saved?.name) return;
     // Selections saved by the old Tahvel version store Tahvel's spelling
     // ("Kaspar Martin Suursalu"); Edupage has "Suursalu Kaspar Martin". Same words, so match on those.
-    const pool = (saved.type === 'teacher' ? index.value.teachers : index.value.classes).map((e) => e.name);
+    const pool = poolFor(index.value, saved.type).map((e) => e.name);
     const name = pool.find((n) => n === saved.name) ?? pool.find((n) => sameWords(n, saved.name));
     if (name) select({ type: saved.type, name });
     else localStorage.removeItem(STORAGE_KEY);
@@ -241,10 +247,10 @@ export const useTimetableStore = defineStore('timetable', () => {
       return;
     }
     const hit = (type) => (e) => ({ id: `${type}:${e.name}`, name: e.name, type, campuses: e.campuses.map(campusName) });
-    const teachers = index.value.teachers.filter((e) => matches(value, e.name)).map(hit('teacher'));
-    const groups = index.value.classes.filter((e) => matches(value, e.name)).map(hit('group'));
-    // a space usually means a person's name, otherwise a group code
-    options.value = (value.includes(' ') ? [...teachers, ...groups] : [...groups, ...teachers]).slice(0, 30);
+    const find = (type) => poolFor(index.value, type).filter((e) => matches(value, e.name)).map(hit(type));
+    const [groups, teachers, rooms] = ['group', 'teacher', 'room'].map(find);
+    // a space usually means a person's name, otherwise a group or room code
+    options.value = (value.includes(' ') ? [...teachers, ...groups, ...rooms] : [...groups, ...rooms, ...teachers]).slice(0, 30);
   }
 
   function select(selected) {
