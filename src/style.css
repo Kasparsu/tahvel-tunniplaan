@@ -181,6 +181,16 @@
   }
 }
 
+/* Text inputs and selects bordered like the chips and buttons, focused in the theme's primary colour
+   (an open select is focused too; a :open selector here does not survive the CSS build) */
+@utility field-themed {
+  --input-color: var(--color-neutral);
+  &:focus,
+  &:focus-within {
+    --input-color: var(--color-primary);
+  }
+}
+
 /* Tint for today's lessons, derived from the active theme so it works on light themes too */
 @theme {
   --color-today: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-200));
