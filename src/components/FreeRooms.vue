@@ -1,8 +1,16 @@
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import ChipSelect from './ChipSelect.vue';
 import { useTimetableStore } from '../stores/timetable';
 const store = useTimetableStore();
+const router = useRouter();
+
+/** A free room opens its timetable. */
+function openRoom(name) {
+    store.openRoom(name);
+    router.push({ name: 'timetable' });
+}
 
 const campusOptions = computed(() => store.campuses.map((c) => ({ value: c.id, label: c.name })));
 const periodOptions = computed(() => store.freePeriods.map((p) => ({ value: p.start, label: `${p.start} - ${p.end}` })));
@@ -25,7 +33,7 @@ const freeSlot = computed({ get: () => store.freeSlot, set: (s) => (store.freeSl
         </div>
         <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             <!-- a free room opens its timetable -->
-            <button v-for="r in store.freeRooms" :key="r.name" class="lesson rounded-box border border-base-300 bg-base-200 p-3 text-left" @click="store.openRoom(r.name)">
+            <button v-for="r in store.freeRooms" :key="r.name" class="lesson rounded-box border border-base-300 bg-base-200 p-3 text-left" @click="openRoom(r.name)">
                 <div class="font-bold">{{ r.name }}</div>
                 <div class="text-[13px] text-base-content/60">{{ r.until ? `vaba kuni ${r.until}` : 'vaba päeva lõpuni' }}</div>
             </button>

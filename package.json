@@ -27,6 +27,7 @@
     "@fontsource-variable/onest": "^5.3.1",
     "pinia": "^4.0.3",
     "suncalc": "^2.0.2",
-    "vue": "^3.5.22"
+    "vue": "^3.5.22",
+    "vue-router": "^5.3.1"
   }
 }
