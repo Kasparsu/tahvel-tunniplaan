@@ -5,6 +5,8 @@ import DayWeekToggle from './components/DayWeekToggle.vue';
 import Search from './components/Search.vue';
 import WeekSelect from './components/WeekSelect.vue';
 import LessonsGrid from './components/LessonsGrid.vue';
+import ModeTabs from './components/ModeTabs.vue';
+import FreeRooms from './components/FreeRooms.vue';
 import Settings from './components/Settings.vue';
 import TechnoLogo from './components/TechnoLogo.vue';
 import { useTimetableStore } from './stores/timetable';
@@ -21,17 +23,23 @@ onMounted(store.init);
       <Settings class="ml-auto"></Settings>
     </header>
 
-    <div class="mt-3 grid grid-cols-[auto_auto] justify-between gap-2.5 md:grid-cols-[1fr_auto_auto] md:justify-stretch">
+    <ModeTabs></ModeTabs>
+
+    <div v-if="store.mode === 'timetable'" class="mt-3 grid grid-cols-[auto_auto] justify-between gap-2.5 md:grid-cols-[1fr_auto_auto] md:justify-stretch">
       <Search class="col-span-full md:col-span-1"></Search>
       <WeekSelect></WeekSelect>
       <DayWeekToggle></DayWeekToggle>
     </div>
+    <WeekSelect v-else class="mt-3"></WeekSelect>
 
     <DayChips></DayChips>
-    <LessonsGrid></LessonsGrid>
-    <div class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60" v-if="store.emptyMessage">
-      {{ store.emptyMessage }}
-    </div>
+    <template v-if="store.mode === 'timetable'">
+      <LessonsGrid></LessonsGrid>
+      <div class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60" v-if="store.emptyMessage">
+        {{ store.emptyMessage }}
+      </div>
+    </template>
+    <FreeRooms v-else></FreeRooms>
 
     <footer class="mt-6 mb-2 text-center text-xs text-base-content/60" v-if="store.index">
       Andmed:

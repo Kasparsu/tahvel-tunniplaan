@@ -1,8 +1,9 @@
 # Tunniplaan
 
-Mobile-friendly timetable for Techno TLN: search a group or a teacher, see the day or the
-week, and step between the weeks the school has published. Installable as an app (PWA) and
-readable offline.
+Mobile-friendly timetable for Techno TLN: search a group, a teacher or a room, see the day or
+the week, and step between the weeks the school has published. "Vabad ruumid" lists the rooms of
+a campus with no lesson in a given period, and until when they stay free. Installable as an app
+(PWA) and readable offline.
 
 The campuses keep their timetables in different systems, and the app merges them so one
 search covers all of them:

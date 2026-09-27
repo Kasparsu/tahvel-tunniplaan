@@ -73,6 +73,14 @@ export const useTimetableStore = defineStore('timetable', () => {
   const selectedSearch = ref(null);
   const loadError = ref('');
   const weekCache = {};
+  // 'timetable' (a group's, teacher's or room's lessons) or 'rooms' (rooms free at a time)
+  const mode = ref('timetable');
+  const freeCampus = ref('K');
+  const freeDay = ref(0);
+  const freeSlot = ref(null); // start time of the bell period looked at, or 'now'
+  // the clock "Praegu" looks at; ticks so the free-room list follows the time
+  const nowTime = ref(DateTime.now().toFormat('HH:mm'));
+  setInterval(() => (nowTime.value = DateTime.now().toFormat('HH:mm')), 30_000);
 
   // Computed
   const week = computed(() => index.value?.weeks[weekIdx.value] ?? null);
@@ -150,6 +158,88 @@ export const useTimetableStore = defineStore('timetable', () => {
       };
     });
   });
+
+  // Free rooms ------------------------------------------------------------------------------
+
+  const campuses = computed(() => Object.entries(index.value?.campuses ?? {}).map(([id, name]) => ({ id, name })));
+  /** The looked-at campus's bell periods this week; the ones the free-room search offers. */
+  const freePeriods = computed(() => weekData.value?.periods?.[freeCampus.value] ?? []);
+  const freeIsToday = computed(() => isCurrentWeek.value && freeDay.value === todayIdx.value);
+  /** The time span looked at: a bell period, or for 'now' the current minute (so breaks work too). */
+  const freePeriod = computed(() => {
+    if (freeSlot.value === 'now') {
+      if (!freeIsToday.value) return null;
+      const next = DateTime.fromFormat(nowTime.value, 'HH:mm').plus({ minutes: 1 }).toFormat('HH:mm');
+      return { start: nowTime.value, end: next, now: true };
+    }
+    return freePeriods.value.find((p) => p.start === freeSlot.value) ?? null;
+  });
+
+  /**
+   * Rooms of the campus with no lesson overlapping the chosen period, and until when each stays
+   * free that day. Only what the timetables show: other bookings, and rooms no lesson uses, are unknown.
+   */
+  const freeRooms = computed(() => {
+    const period = freePeriod.value;
+    if (!period || !weekData.value || !index.value) return [];
+    const dayLessons = weekData.value.lessons.filter((l) => l.day === freeDay.value);
+    return (index.value.rooms ?? [])
+      .filter((r) => r.campuses.includes(freeCampus.value))
+      .map((r) => {
+        const inRoom = dayLessons.filter((l) => l.rooms.includes(r.name));
+        if (inRoom.some((l) => l.start < period.end && l.end > period.start)) return null;
+        const next = inRoom.filter((l) => l.start >= period.end).sort((a, b) => a.start.localeCompare(b.start))[0];
+        return { name: r.name, until: next?.start ?? null };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name, 'et', { numeric: true }));
+  });
+
+  /** Right now when looking at today, else the day's first bell period. */
+  function currentSlot() {
+    return freeIsToday.value ? 'now' : (freePeriods.value[0]?.start ?? null);
+  }
+
+  /** Open the free-room search on now: this week, today, the current period, the selection's campus. */
+  function showFreeRooms() {
+    mode.value = 'rooms';
+    if (selectedCampuses.value.length) freeCampus.value = selectedCampuses.value[0];
+    const current = currentWeekIdx(index.value?.weeks ?? []);
+    if (weekIdx.value !== current) weekIdx.value = current;
+    freeDay.value = isCurrentWeek.value ? todayIdx.value : 0;
+    freeSlot.value = currentSlot(); // null until the week's bell periods have loaded, then the watch picks one
+  }
+
+  /** "Praegu": back to this week and today, at the current minute. */
+  function showFreeNow() {
+    const current = currentWeekIdx(index.value?.weeks ?? []);
+    if (weekIdx.value !== current) weekIdx.value = current;
+    freeDay.value = todayIdx.value;
+    freeSlot.value = 'now';
+  }
+
+  // keep something valid picked as the campus, day or week (and so the bells) change
+  watch([freePeriods, freeDay, freeIsToday], () => {
+    const valid = freeSlot.value === 'now' ? freeIsToday.value : freePeriods.value.some((p) => p.start === freeSlot.value);
+    if (!valid) freeSlot.value = currentSlot();
+  });
+
+  function setFreeCampus(c) {
+    freeCampus.value = c;
+  }
+
+  /** From a free room to its timetable. */
+  function openRoom(name) {
+    mode.value = 'timetable';
+    select({ type: 'room', name });
+  }
+
+  /** Day chips pick the free-room day in that mode, the timetable's day otherwise. */
+  function chooseDay(d) {
+    if (mode.value === 'rooms') freeDay.value = d;
+    else setDay(d);
+  }
+  const activeDay = computed(() => (mode.value === 'rooms' ? freeDay.value : day.value));
 
   const emptyMessage = computed(() => {
     if (loadError.value) return loadError.value;
@@ -294,5 +384,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError,
     isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
+    mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
+    showFreeRooms, showFreeNow, setFreeCampus, openRoom, chooseDay,
   };
 });
