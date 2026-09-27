@@ -12,9 +12,11 @@
     // The theme's background colour is remembered from the last visit (tahvel.themeColor, written by
     // ThemeSelect.vue) so the browser bar and page background are right before the stylesheet loads.
     try {
-      // no saved theme: the automatic pair (tahvel.autoTheme), by the device's preference until the light sensor says
+      // no saved theme: the automatic pair (tahvel.autoTheme). By sunrise and sunset when that is picked (the last
+      // known times, off by a few minutes at most), else by the device's preference until the light sensor says.
       const auto = JSON.parse(localStorage.getItem('tahvel.autoTheme') || '{}');
-      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      const now = new Date().toTimeString().slice(0, 5);
+      const dark = auto.source === 'sun' && auto.sun ? now < auto.sun.rise || now >= auto.sun.set : matchMedia('(prefers-color-scheme: dark)').matches;
       const t = localStorage.getItem('tahvel.theme') || (dark ? auto.dark || 'techno-dark' : auto.light || 'techno');
       document.documentElement.dataset.theme = t;
       const saved = JSON.parse(localStorage.getItem('tahvel.themeColor') || 'null');

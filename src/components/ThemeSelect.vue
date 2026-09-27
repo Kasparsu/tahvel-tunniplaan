@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue';
+import { getTimes } from 'suncalc';
 import ChipSelect from './ChipSelect.vue';
 import EDITOR_THEMES from '../themes/editor.json';
 
@@ -23,12 +24,14 @@ const ALL = GROUPS.flatMap((g) => g.themes);
 const BY_ID = Object.fromEntries(ALL.map((t) => [t.id, t]));
 const THEMES = ALL.map((t) => t.id);
 
-// No saved theme means automatic: a light and a dark theme, picked by the device's preference or the light sensor
+// No saved theme means automatic: a light and a dark theme, switched by `source`:
+// the device's preference ('system'), sunrise and sunset in Tallinn ('sun') or the light sensor ('sensor')
 const AUTO = 'auto';
 const STORAGE_KEY = 'tahvel.theme'; // also read by the inline script in index.html; absent means AUTO
-const AUTO_KEY = 'tahvel.autoTheme'; // { light, dark, sensor }, also read by index.html
+const AUTO_KEY = 'tahvel.autoTheme'; // { light, dark, source, sun: { rise, set } }, also read by index.html
 const COLOR_KEY = 'tahvel.themeColor'; // { theme, color } of the applied theme, for index.html's first paint
-const AUTO_DEFAULT = { light: 'techno', dark: 'techno-dark', sensor: false };
+const AUTO_DEFAULT = { light: 'techno', dark: 'techno-dark', source: 'system' };
+const SOURCES = ['system', 'sun', 'sensor'];
 
 /** Any CSS colour (daisyUI's built-in themes use oklch) as #rrggbb, which every browser takes in theme-color. */
 function toHex(color) {
@@ -54,14 +57,15 @@ function loadAuto() {
     try {
         a = JSON.parse(localStorage.getItem(AUTO_KEY) || '{}');
     } catch {}
+    // before sunrise/sunset switching this was a { sensor: true } on/off setting
+    const source = SOURCES.includes(a.source) ? a.source : a.sensor ? 'sensor' : AUTO_DEFAULT.source;
     return {
         light: BY_ID[a.light]?.dark === false ? a.light : AUTO_DEFAULT.light,
         dark: BY_ID[a.dark]?.dark === true ? a.dark : AUTO_DEFAULT.dark,
-        sensor: !!a.sensor,
+        source,
     };
 }
 const auto = ref(loadAuto());
-watch(auto, (a) => localStorage.setItem(AUTO_KEY, JSON.stringify(a)), { deep: true });
 const lightOptions = ALL.filter((t) => !t.dark).map((t) => ({ value: t.id, label: t.label }));
 const darkOptions = ALL.filter((t) => t.dark).map((t) => ({ value: t.id, label: t.label }));
 
@@ -110,11 +114,35 @@ function stopSensor() {
     sensorDark.value = null;
     candidate = null;
 }
-watch(() => sensorSupported && theme.value === AUTO && auto.value.sensor, (on) => (on ? startSensor() : stopSensor()), { immediate: true });
+watch(() => sensorSupported && theme.value === AUTO && auto.value.source === 'sensor', (on) => (on ? startSensor() : stopSensor()), {
+    immediate: true,
+});
 onUnmounted(stopSensor);
 
-/** Automatic is dark per the light sensor once it has a clear reading, else per the device's preference. */
-const autoDark = computed(() => (auto.value.sensor && sensorDark.value !== null ? sensorDark.value : prefersDark.value));
+// Sunrise and sunset in Tallinn, computed on the device (works offline); across Estonia they differ by minutes.
+const TALLINN = [59.437, 24.7536];
+const clock = ref(Date.now());
+const clockTimer = setInterval(() => (clock.value = Date.now()), 60_000);
+onUnmounted(() => clearInterval(clockTimer));
+const hhmm = (d) => d.toLocaleTimeString('et-EE', { timeZone: 'Europe/Tallinn', hour: '2-digit', minute: '2-digit' });
+const sun = computed(() => {
+    const t = getTimes(new Date(clock.value), ...TALLINN);
+    return { rise: t.sunrise, set: t.sunset };
+});
+const sunDark = computed(() => clock.value < sun.value.rise.getTime() || clock.value >= sun.value.set.getTime());
+
+/** Automatic is dark by its source; the light sensor goes by the device's preference until a clear reading. */
+const autoDark = computed(() => {
+    if (auto.value.source === 'sun') return sunDark.value;
+    if (auto.value.source === 'sensor' && sensorDark.value !== null) return sensorDark.value;
+    return prefersDark.value;
+});
+
+// saved with today's sun times, so index.html can pick the right theme before the app loads
+watch([auto, sun], ([a, s]) => localStorage.setItem(AUTO_KEY, JSON.stringify({ ...a, sun: { rise: hhmm(s.rise), set: hhmm(s.set) } })), {
+    deep: true,
+    immediate: true,
+});
 const applied = computed(() => (theme.value === AUTO ? (autoDark.value ? auto.value.dark : auto.value.light) : theme.value));
 
 watch(applied, (t) => {
@@ -140,7 +168,7 @@ watch(theme, (t) => (t === AUTO ? localStorage.removeItem(STORAGE_KEY) : localSt
             </div>
             <div class="mt-0.5 text-xs opacity-60">
                 {{ BY_ID[auto.light].label }} või {{ BY_ID[auto.dark].label }},
-                vastavalt {{ auto.sensor && sensorSupported ? 'valgusandurile' : 'seadme seadistusele' }}
+                vastavalt {{ { system: 'seadme seadistusele', sun: 'päikesetõusule ja -loojangule', sensor: 'valgusandurile' }[auto.source] }}
             </div>
             <div class="mt-1.5 flex gap-1">
                 <!-- dots take their colours from each theme of the pair -->
@@ -160,14 +188,26 @@ watch(theme, (t) => (t === AUTO ? localStorage.removeItem(STORAGE_KEY) : localSt
                 <span class="text-sm">Tume teema</span>
                 <ChipSelect v-model="auto.dark" :options="darkOptions" label="Tume teema" align="right" class="w-48"></ChipSelect>
             </div>
-            <label class="flex items-center justify-between gap-3" :class="sensorSupported ? 'cursor-pointer' : 'opacity-50'">
-                <span class="text-sm">Vaheta valgusanduri järgi</span>
-                <input type="checkbox" class="toggle toggle-primary" v-model="auto.sensor" :disabled="!sensorSupported" />
-            </label>
-            <p v-if="!sensorSupported" class="text-xs text-base-content/60">
-                See brauser ei anna valgusandurile ligi, seega järgitakse seadme heledat või tumedat režiimi.
-            </p>
-            <p v-else-if="sensorError" class="text-xs text-error">{{ sensorError }}</p>
+            <fieldset class="mt-1 grid gap-1.5">
+                <legend class="mb-1 text-sm">Vaheta</legend>
+                <label class="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" class="radio radio-primary radio-sm" value="system" v-model="auto.source" />
+                    <span class="text-sm">seadme heleda või tumeda režiimi järgi</span>
+                </label>
+                <label class="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" class="radio radio-primary radio-sm" value="sun" v-model="auto.source" />
+                    <span class="text-sm">
+                        päikesetõusu ja -loojangu järgi
+                        <span class="block text-xs text-base-content/60">Tallinnas täna {{ hhmm(sun.rise) }} ja {{ hhmm(sun.set) }}</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-2.5" :class="sensorSupported ? 'cursor-pointer' : 'opacity-50'">
+                    <input type="radio" class="radio radio-primary radio-sm" value="sensor" v-model="auto.source" :disabled="!sensorSupported" />
+                    <span class="text-sm">valgusanduri järgi</span>
+                </label>
+            </fieldset>
+            <p v-if="!sensorSupported" class="text-xs text-base-content/60">See brauser ei anna valgusandurile ligi.</p>
+            <p v-else-if="auto.source === 'sensor' && sensorError" class="text-xs text-error">{{ sensorError }}</p>
         </div>
         <template v-for="group in GROUPS" :key="group.name">
             <h4 class="col-span-full mt-3 text-xs font-semibold tracking-wide text-base-content/60 uppercase">{{ group.name }}</h4>
