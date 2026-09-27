@@ -1,6 +1,9 @@
 <script setup>
 import { ref } from 'vue';
 import ThemeSelect from './ThemeSelect.vue';
+import { useTimetableStore } from '../stores/timetable';
+
+const store = useTimetableStore();
 
 const dialog = ref(null);
 </script>
@@ -18,6 +21,15 @@ const dialog = ref(null);
                     <button class="btn btn-circle btn-ghost btn-sm absolute top-3 right-3" aria-label="Sulge">✕</button>
                 </form>
                 <h2 class="text-lg font-bold">Seaded</h2>
+                <h3 class="mt-4 mb-2 text-sm font-semibold text-base-content/60">Kuvamine</h3>
+                <label class="flex cursor-pointer items-center justify-between gap-3 py-1.5">
+                    <span>Näita vabu tunde</span>
+                    <input type="checkbox" class="toggle toggle-primary" v-model="store.settings.showFree" />
+                </label>
+                <label class="flex cursor-pointer items-center justify-between gap-3 py-1.5">
+                    <span>Peida päevad, kus tunde pole</span>
+                    <input type="checkbox" class="toggle toggle-primary" v-model="store.settings.hideEmptyDays" />
+                </label>
                 <h3 class="mt-4 mb-2 text-sm font-semibold text-base-content/60">Teema</h3>
                 <ThemeSelect></ThemeSelect>
             </div>

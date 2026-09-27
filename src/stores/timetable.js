@@ -10,6 +10,19 @@ const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reed
 // Snapshot of every campus's timetable (Edupage and Tahvel), written by scripts/fetch-timetable.ts at deploy time.
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
 const STORAGE_KEY = 'tahvel.selection';
+const SETTINGS_KEY = 'tahvel.settings';
+const DEFAULT_SETTINGS = {
+  showFree: true, // "Vaba" cards for free periods
+  hideEmptyDays: false, // day chips only for days with lessons
+};
+
+function loadSettings() {
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
 
 // Helpers
 const words = (s) => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
@@ -73,6 +86,8 @@ export const useTimetableStore = defineStore('timetable', () => {
   const selectedSearch = ref(null);
   const loadError = ref('');
   const weekCache = {};
+  const settings = ref(loadSettings());
+  watch(settings, (s) => localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)), { deep: true });
   // 'timetable' (a group's, teacher's or room's lessons) or 'rooms' (rooms free at a time)
   const mode = ref('timetable');
   const freeCampus = ref('K');
@@ -93,13 +108,18 @@ export const useTimetableStore = defineStore('timetable', () => {
   const hasPrevWeek = computed(() => weekIdx.value > 0);
   const hasNextWeek = computed(() => !!index.value && weekIdx.value < index.value.weeks.length - 1);
 
-  const chips = computed(() =>
-    Array.from({ length: 7 }, (_, i) => ({
+  const chips = computed(() => {
+    const all = Array.from({ length: 7 }, (_, i) => ({
       day: i,
       date: monday.value.plus({ days: i }).toFormat('dd.MM'),
       letter: DAY_LETTERS[i],
-    })),
-  );
+    }));
+    // with "hide days without lessons", only the selection's days; free rooms always get the whole week
+    const sel = selectedSearch.value;
+    if (!settings.value.hideEmptyDays || mode.value !== 'timetable' || !sel || !weekData.value) return all;
+    const days = new Set(lessonsFor(sel, weekData.value.lessons).map((l) => l.day));
+    return all.filter((c) => days.has(c.day));
+  });
 
   const weekRange = computed(() => `${monday.value.toFormat('dd.MM')} - ${monday.value.plus({ days: 6 }).toFormat('dd.MM')}`);
 
@@ -128,7 +148,8 @@ export const useTimetableStore = defineStore('timetable', () => {
     let cursor = { day: -1 };
     for (const l of list) {
       if (l.day !== cursor.day) cursor = { day: l.day, end: periodsOf(l)[0]?.start ?? l.start };
-      for (const b of freeBlocks(periodsOf(l), cursor.end, l.start)) withFree.push({ day: l.day, ...b, free: true });
+      const free = settings.value.showFree ? freeBlocks(periodsOf(l), cursor.end, l.start) : [];
+      for (const b of free) withFree.push({ day: l.day, ...b, free: true });
       withFree.push(l);
       if (l.end > cursor.end) cursor.end = l.end;
     }
@@ -381,7 +402,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   }
 
   return {
-    index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError,
+    index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
     isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
