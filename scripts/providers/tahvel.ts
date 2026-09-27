@@ -32,9 +32,15 @@ async function weekEvents(server: string, schoolId: number, monday: string): Pro
 /** Tahvel's "First Last" as Edupage's "Last First", so the same teacher is recognised in both. */
 const teacherName = (t: Row) => clean([t.lastname, t.firstname].filter(Boolean).join(" ")) || clean(t.name);
 
-/** "PM - E243", as Tahvel shows it: the same room code can exist in several buildings. */
+/**
+ * "PM - E243", as Tahvel shows it: the same room code can exist in several buildings. Kesklinn's
+ * rooms (K-A301) are written as Kesklinn's Edupage writes them (A-301), so both systems' lessons in
+ * a room are seen together, which the free-room search relies on.
+ */
 const roomName = (r: Row) => {
   const code = clean(r.roomCode);
+  const kesklinn = code.match(/^K-([A-Z])(\d.*)$/);
+  if (kesklinn) return `${kesklinn[1]}-${kesklinn[2]}`;
   const building = clean(r.buildingCode);
   return building && code ? `${building} - ${code}` : code;
 };
