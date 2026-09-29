@@ -24,6 +24,7 @@
  */
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { fetchEdupage } from "./providers/edupage";
+import { fetchRoomInfo, type RoomInfo } from "./providers/rooms";
 import { fetchTahvel } from "./providers/tahvel";
 import { addDays, byTime, CAMPUSES, campusRoom, mondayOf, upstream, type Campus, type Lesson, type Period, type SourceData } from "./providers/types";
 
@@ -48,6 +49,9 @@ const SOURCES: Source[] = [
 ];
 /** Tahvel has every week of the year; fetch this many from this week on (it is ~2.5 MB per week). */
 const TAHVEL_WEEKS_AHEAD = 4;
+
+/** Room details (seats, computers, equipment) the campuses publish; only Kesklinn so far. */
+const ROOM_LISTS: { campus: Campus; url: string }[] = [{ campus: "K", url: "https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json" }];
 
 const OUT = new URL("../public/data/", import.meta.url).pathname;
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Tallinn" });
@@ -155,10 +159,26 @@ for (const [monday, week] of [...weeks].sort(([a], [b]) => a.localeCompare(b))) 
   writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, periods: week.periods, lessons: week.lessons }));
   index.push({ monday, file, lessons: week.lessons.length });
 }
+// Room details are extra: without them the timetable still works, so a failure only warns.
+// Listed rooms no lesson uses are added, so free-room search can offer them too.
+const roomInfo = new Map<string, RoomInfo>();
+for (const { campus, url } of ROOM_LISTS) {
+  try {
+    for (const [code, info] of await fetchRoomInfo(url)) {
+      roomInfo.set(code, info);
+      add(rooms, code, campus);
+    }
+  } catch (e) {
+    console.warn(`room details unavailable, continuing without: ${(e as Error).message}`);
+  }
+}
+
 const sortEt = (a: string, b: string) => a.localeCompare(b, "et");
 const campusOrder = Object.keys(CAMPUSES) as Campus[];
-const list = (map: Map<string, Set<Campus>>) =>
-  [...map].sort(([a], [b]) => sortEt(a, b)).map(([name, campuses]) => ({ name, campuses: campusOrder.filter((c) => campuses.has(c)) }));
+const list = (map: Map<string, Set<Campus>>, details?: Map<string, RoomInfo>) =>
+  [...map]
+    .sort(([a], [b]) => sortEt(a, b))
+    .map(([name, campuses]) => ({ name, campuses: campusOrder.filter((c) => campuses.has(c)), ...(details?.has(name) && { info: details.get(name) }) }));
 writeFileSync(
   `${OUT}index.json`,
   JSON.stringify({
@@ -168,7 +188,7 @@ writeFileSync(
     weeks: index,
     classes: list(classes),
     teachers: list(teachers),
-    rooms: list(rooms),
+    rooms: list(rooms, roomInfo),
   }),
 );
-console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${rooms.size} rooms, ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);
+console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${rooms.size} rooms (${roomInfo.size} with details), ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);
