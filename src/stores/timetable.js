@@ -11,10 +11,24 @@ const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reed
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
 const STORAGE_KEY = 'tahvel.selection';
 const SETTINGS_KEY = 'tahvel.settings';
+const FILTERS_KEY = 'tahvel.freeFilters';
+const NO_FILTERS = {
+  seats: null, // at least this many student seats
+  computers: '', // '' any room, 'any' a computer class, or a platform: 'windows', 'mac'
+  equipment: [], // all of these: 'projector', 'interactive_display', 'television', 'whiteboard', 'chalkboard'
+};
 const DEFAULT_SETTINGS = {
   showFree: true, // "Vaba" cards for free periods
   hideEmptyDays: false, // day chips only for days with lessons
 };
+
+function loadFreeFilters() {
+  try {
+    return { ...structuredClone(NO_FILTERS), ...JSON.parse(localStorage.getItem(FILTERS_KEY) || '{}') };
+  } catch {
+    return structuredClone(NO_FILTERS);
+  }
+}
 
 function loadSettings() {
   try {
@@ -93,6 +107,8 @@ export const useTimetableStore = defineStore('timetable', () => {
   const freeCampus = ref('K');
   const freeDay = ref(0);
   const freeSlot = ref(null); // start time of the bell period looked at, or 'now'
+  const freeFilters = ref(loadFreeFilters());
+  watch(freeFilters, (f) => localStorage.setItem(FILTERS_KEY, JSON.stringify(f)), { deep: true });
   // the clock "Praegu" looks at; ticks so the free-room list follows the time
   const nowTime = ref(DateTime.now().toFormat('HH:mm'));
   setInterval(() => (nowTime.value = DateTime.now().toFormat('HH:mm')), 30_000);
@@ -200,7 +216,7 @@ export const useTimetableStore = defineStore('timetable', () => {
    * Rooms of the campus with no lesson overlapping the chosen period, and until when each stays
    * free that day. Only what the timetables show: other bookings, and rooms no lesson uses, are unknown.
    */
-  const freeRooms = computed(() => {
+  const freeRoomsAll = computed(() => {
     const period = freePeriod.value;
     if (!period || !weekData.value || !index.value) return [];
     const dayLessons = weekData.value.lessons.filter((l) => l.day === freeDay.value);
@@ -210,11 +226,38 @@ export const useTimetableStore = defineStore('timetable', () => {
         const inRoom = dayLessons.filter((l) => l.rooms.includes(r.name));
         if (inRoom.some((l) => l.start < period.end && l.end > period.start)) return null;
         const next = inRoom.filter((l) => l.start >= period.end).sort((a, b) => a.start.localeCompare(b.start))[0];
-        return { name: r.name, until: next?.start ?? null };
+        return { name: r.name, until: next?.start ?? null, info: r.info ?? null };
       })
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name, 'et', { numeric: true }));
   });
+
+  // Filters work on the room details a campus publishes (seats, computers, equipment); only Kesklinn has them so far.
+  const freeHasInfo = computed(() => (index.value?.rooms ?? []).some((r) => r.info && r.campuses.includes(freeCampus.value)));
+  const freeFiltersActive = computed(() => {
+    const f = freeFilters.value;
+    return !!(f.seats || f.computers || f.equipment.length);
+  });
+  function matchesFilters(info) {
+    const f = freeFilters.value;
+    if (f.seats && info.seats < f.seats) return false;
+    if (f.computers === 'any' && !info.computers) return false;
+    if (f.computers && f.computers !== 'any' && !info.platforms.includes(f.computers)) return false;
+    return f.equipment.every((e) => info.equipment.includes(e));
+  }
+  /** Free rooms passing the filters; with a filter on, rooms without details cannot be checked and are left out. */
+  const freeRooms = computed(() =>
+    freeHasInfo.value && freeFiltersActive.value ? freeRoomsAll.value.filter((r) => r.info && matchesFilters(r.info)) : freeRoomsAll.value,
+  );
+  /** Free rooms a filter left out only because their details are unknown. */
+  const freeRoomsUnknown = computed(() => (freeHasInfo.value && freeFiltersActive.value ? freeRoomsAll.value.filter((r) => !r.info).length : 0));
+  function toggleFreeEquipment(e) {
+    const list = freeFilters.value.equipment;
+    freeFilters.value.equipment = list.includes(e) ? list.filter((x) => x !== e) : [...list, e];
+  }
+  function resetFreeFilters() {
+    freeFilters.value = structuredClone(NO_FILTERS);
+  }
 
   /** Right now when looking at today, else the day's first bell period. */
   function currentSlot() {
@@ -406,6 +449,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
+    freeFilters, freeHasInfo, freeFiltersActive, freeRoomsUnknown, toggleFreeEquipment, resetFreeFilters,
     showFreeRooms, showFreeNow, setFreeCampus, openRoom, chooseDay,
   };
 });

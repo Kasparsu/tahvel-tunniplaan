@@ -5,6 +5,12 @@ the week, and step between the weeks the school has published. "Vabad ruumid" li
 a campus with no lesson in a given period, and until when they stay free. Installable as an app
 (PWA) and readable offline.
 
+Kesklinn publishes room details (https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json):
+student seats, computers (count, Windows or Mac), projectors, interactive displays, TVs and boards.
+The fetch adds them to `index.json`, free rooms show them as icons and can be filtered by them, and
+its listed rooms without lessons count as free too. If the file cannot be fetched, the deploy goes
+on without room details.
+
 The campuses keep their timetables in different systems, and the app merges them so one
 search covers all of them:
 
