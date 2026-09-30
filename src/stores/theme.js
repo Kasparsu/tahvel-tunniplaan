@@ -37,8 +37,47 @@ const COLOR_KEY = 'tahvel.themeColor'; // { theme, color } of the applied theme,
 const AUTO_DEFAULT = { light: 'techno', dark: 'techno-dark', source: 'system' };
 const SOURCES = ['system', 'sun', 'sensor'];
 
+/** WCAG relative luminance of #rrggbb. */
+function luminance(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio of two #rrggbb colours. */
+export function contrast(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * QR colours from a theme: `{ fg, bg }` as #rrggbb, always dark modules on a lighter ground (phones do not
+ * all read inverted codes) with 4.5:1 contrast. A light primary becomes the ground, with the first of the
+ * theme's darker colours that contrasts enough (Techno dark: Techno purple on Techno yellow); a dark primary
+ * is the modules on white; failing both, the primary darkened on white.
+ */
+export function qrColors(css) {
+  const get = (name) => css.getPropertyValue(`--color-${name}`).trim();
+  const primary = get('primary') ? toHex(get('primary')) : '#000000';
+  const candidates = ['neutral', 'base-100', 'primary-content', 'base-content'].map(get).filter(Boolean).map(toHex);
+  const onPrimary = candidates.find((c) => luminance(c) < luminance(primary) && contrast(c, primary) >= 4.5);
+  if (onPrimary) return { fg: onPrimary, bg: primary };
+  return { fg: scannableOnWhite(primary), bg: '#ffffff' };
+}
+
+/**
+ * A colour a phone can scan as QR modules on white: the colour itself when it is dark enough (4.5:1 against
+ * white), else the same hue darkened step by step until it is. Scanners want dark modules on a light ground.
+ */
+export function scannableOnWhite(color, ratio = 4.5) {
+  let hex = toHex(color);
+  for (let i = 0; i < 20 && 1.05 / (luminance(hex) + 0.05) < ratio; i++) {
+    hex = '#' + [1, 3, 5].map((j) => Math.round(parseInt(hex.slice(j, j + 2), 16) * 0.85).toString(16).padStart(2, '0')).join('');
+  }
+  return hex;
+}
+
 /** Any CSS colour (daisyUI's built-in themes use oklch) as #rrggbb, which every browser takes in theme-color. */
-function toHex(color) {
+export function toHex(color) {
   const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d');
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, 1, 1);
