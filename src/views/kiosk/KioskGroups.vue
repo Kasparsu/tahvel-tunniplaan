@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import KioskPage from '../../components/kiosk/KioskPage.vue';
 import KioskTiles from '../../components/kiosk/KioskTiles.vue';
 import { OTHER, useKioskStore } from '../../stores/kiosk';
-import { openPick, PURPOSE_TITLES } from './kioskPick';
+import { openPick, PURPOSE_LABEL } from './kioskPick';
 
 /** Year, then group: two screens of big tiles instead of a scrolling list. */
 const props = defineProps({ purpose: { type: String, required: true }, year: { type: String, default: '' } });
@@ -23,7 +23,7 @@ function pick(t) {
 }
 </script>
 <template>
-  <KioskPage :title="PURPOSE_TITLES.group[purpose]" :sub="`${kiosk.campusName} · ${year ? `${yearLabel(year)} · vali rühm` : 'vali õppeaasta algus'}`">
+  <KioskPage :title="PURPOSE_LABEL[purpose]" :sub="`${kiosk.campusName} · ${year ? `${yearLabel(year)} · vali rühm` : 'vali õppeaasta algus'}`">
     <KioskTiles :tiles="tiles" @pick="pick"></KioskTiles>
   </KioskPage>
 </template>

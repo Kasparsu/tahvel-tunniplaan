@@ -5,7 +5,7 @@ import KioskPage from '../../components/kiosk/KioskPage.vue';
 import KioskTiles from '../../components/kiosk/KioskTiles.vue';
 import { OTHER, useKioskStore } from '../../stores/kiosk';
 import { roomShort } from '../../codes';
-import { openPick, PURPOSE_TITLES } from './kioskPick';
+import { openPick, PURPOSE_LABEL } from './kioskPick';
 
 /** Building, then room. */
 const props = defineProps({ purpose: { type: String, required: true }, building: { type: String, default: '' } });
@@ -24,7 +24,7 @@ function pick(t) {
 }
 </script>
 <template>
-  <KioskPage :title="PURPOSE_TITLES.room[purpose]" :sub="`${kiosk.campusName} · ${building ? `hoone ${buildingLabel(building)} · vali ruum` : 'vali hoone'}`">
+  <KioskPage :title="PURPOSE_LABEL[purpose]" :sub="`${kiosk.campusName} · ${building ? `hoone ${buildingLabel(building)} · vali ruum` : 'vali hoone'}`">
     <KioskTiles :tiles="tiles" @pick="pick"></KioskTiles>
   </KioskPage>
 </template>

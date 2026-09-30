@@ -9,14 +9,15 @@ import { useTimetableStore } from '../../stores/timetable';
 import { roomShort } from '../../codes';
 
 /**
- * A group's or room's lessons today, at any campus, listed like the timetable with its free periods;
- * lessons already over are faded.
+ * A group's, teacher's or room's lessons today, at any campus, listed like the timetable with its free
+ * periods; lessons already over are faded.
  */
 const props = defineProps({ type: { type: String, required: true }, name: { type: String, required: true } });
 const kiosk = useKioskStore();
 const timetable = useTimetableStore();
 const router = useRouter();
-const field = computed(() => (props.type === 'room' ? 'rooms' : 'classes'));
+const FIELD = { group: 'classes', teacher: 'teachers', room: 'rooms' };
+const field = computed(() => FIELD[props.type]);
 const lessons = computed(() => kiosk.today.filter((l) => l[field.value].includes(props.name)).sort((a, b) => a.start.localeCompare(b.start)));
 const rows = computed(() =>
   lessonRows({

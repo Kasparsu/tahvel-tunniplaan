@@ -6,6 +6,7 @@ import SettingsView from './views/SettingsView.vue';
 import GeneralSettingsView from './views/GeneralSettingsView.vue';
 import ThemeSettingsView from './views/ThemeSettingsView.vue';
 import KioskHome from './views/kiosk/KioskHome.vue';
+import KioskPick from './views/kiosk/KioskPick.vue';
 import KioskNow from './views/kiosk/KioskNow.vue';
 import KioskBuildingPick from './views/kiosk/KioskBuildingPick.vue';
 import KioskGroups from './views/kiosk/KioskGroups.vue';
@@ -33,13 +34,14 @@ export default createRouter({
     },
     // Kiosk mode (settings → Kioskirežiim); 'tana' pickers lead to today's lessons, 'plaan' ones to the full timetable
     { path: '/kiosk', name: 'kiosk', component: KioskHome },
+    { path: '/kiosk/vali/:purpose(tana|plaan)', name: 'kiosk-pick', component: KioskPick, props: true },
     { path: '/kiosk/praegu', name: 'kiosk-now', component: KioskNow },
     { path: '/kiosk/hoone', name: 'kiosk-building', component: KioskBuildingPick },
     { path: '/kiosk/hoone/:building', name: 'kiosk-building-now', component: KioskNow, props: true },
     { path: '/kiosk/ruhmad/:purpose(tana|plaan)/:year?', name: 'kiosk-groups', component: KioskGroups, props: true },
     { path: '/kiosk/ruumid/:purpose(tana|plaan)/:building?', name: 'kiosk-rooms', component: KioskRooms, props: true },
-    { path: '/kiosk/tana/:type(group|room)/:name', name: 'kiosk-today', component: KioskToday, props: true },
-    { path: '/kiosk/opetajad', name: 'kiosk-teachers', component: KioskTeachers },
+    { path: '/kiosk/opetajad/:purpose(tana|plaan)', name: 'kiosk-teachers', component: KioskTeachers, props: true },
+    { path: '/kiosk/tana/:type(group|teacher|room)/:name', name: 'kiosk-today', component: KioskToday, props: true },
     { path: '/kiosk/vabad-ruumid', name: 'kiosk-free', component: KioskFreeRooms },
     { path: '/kiosk/louna', name: 'kiosk-lunch', component: KioskLunch },
     {

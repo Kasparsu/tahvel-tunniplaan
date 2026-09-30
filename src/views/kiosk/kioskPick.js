@@ -4,7 +4,5 @@ export function openPick(router, purpose, type, name, week) {
   return router.push({ name: 'kiosk-week', params: { type, name }, query: week ? { week } : {} });
 }
 
-export const PURPOSE_TITLES = {
-  group: { tana: 'Hetke tunnid rühmade lõikes', plaan: 'Õpperühmade tunniplaan' },
-  room: { tana: 'Hetke tunnid ruumi lõikes', plaan: 'Ruumide tunniplaan' },
-};
+/** The home tile a picker sits under; the screens on the way carry it as their title. */
+export const PURPOSE_LABEL = { tana: 'Tunnid täna', plaan: 'Tunniplaanid' };

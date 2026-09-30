@@ -3,23 +3,24 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import KioskPage from '../../components/kiosk/KioskPage.vue';
 import { useKioskStore } from '../../stores/kiosk';
-import { openPick } from './kioskPick';
+import { openPick, PURPOSE_LABEL } from './kioskPick';
 
 /** Teachers of the campus by surname, with a letter rail on the side to jump through the list. */
+defineProps({ purpose: { type: String, required: true } });
 const kiosk = useKioskStore();
 const router = useRouter();
 const sections = ref({});
 const jump = (letter) => sections.value[letter]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 </script>
 <template>
-  <KioskPage title="Õpetajate tunniplaan" :sub="`${kiosk.campusName} · vali õpetaja`">
+  <KioskPage :title="PURPOSE_LABEL[purpose]" :sub="`${kiosk.campusName} · vali õpetaja`">
     <div class="flex gap-3">
       <div class="grid min-w-0 grow gap-5">
         <section v-for="[letter, names] in kiosk.teachersByLetter" :key="letter" :ref="(el) => (sections[letter] = el)" class="scroll-mt-4">
           <h3 class="mb-2 text-2xl font-bold text-primary">{{ letter }}</h3>
           <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
             <button v-for="t in names" :key="t" type="button" class="btn btn-lg h-auto min-h-14 justify-start border-neutral text-left font-normal"
-              @click="openPick(router, 'plaan', 'teacher', t)">
+              @click="openPick(router, purpose, 'teacher', t)">
               {{ t }}
             </button>
           </div>

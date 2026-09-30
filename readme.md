@@ -5,14 +5,15 @@ the week, and step between the weeks the school has published. "Vabad ruumid" li
 a campus with no lesson in a given period, and until when they stay free. "Koolilõuna" shows each
 campus's school lunch menu by day. Installable as an app (PWA) and readable offline.
 
-Settings → "Kioskirežiim" turns the app into a touch screen for one campus, with big panels like
-Tahvel's school board: lessons on now and next (for the campus or one building), today's lessons of a
-group or room, a group's, teacher's or room's whole week on one screen (a column per day, time
-running down with the lesson start and end times marked), free rooms with the day, time and room
-filters in a sidebar of big buttons, and the campus's lunch menu. Groups are picked by starting year
-then code, rooms by building then number, teachers from a surname-letter rail, so nothing needs a
-keyboard. A kiosk returns to its home screen after 90 s untouched, re-reads the data every 10
-minutes and reloads at 04:00; holding the logo for 2 s opens settings.
+Settings → "Kioskirežiim" turns the app into a touch screen for one campus. Its home screen has four
+big panels — "Tunnid täna", "Tunniplaanid", "Vabad ruumid" and "Lõuna" — and the first two go on to
+ask whose: a group's, a teacher's or a room's. "Tunnid täna" also boards the lessons on now and next
+for the whole campus or one building, like Tahvel's school board. A week shows on one screen (a column
+per day, time running down with the lesson start and end times marked), and free rooms get the day,
+time and room filters in a sidebar of big buttons. Groups are picked by starting year then code, rooms
+by building then number, teachers from a surname-letter rail, so nothing needs a keyboard. A kiosk
+returns to its home screen after 90 s untouched, re-reads the data every 10 minutes and reloads at
+04:00; holding the logo for 2 s opens settings.
 
 Kesklinn publishes room details (https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json):
 student seats, computers (count, Windows or Mac), projectors, interactive displays, TVs and boards.
