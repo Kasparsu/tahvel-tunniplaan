@@ -160,13 +160,19 @@ for (const [monday, week] of [...weeks].sort(([a], [b]) => a.localeCompare(b))) 
   index.push({ monday, file, lessons: week.lessons.length });
 }
 // Room details are extra: without them the timetable still works, so a failure only warns.
-// Listed rooms no lesson uses are added, so free-room search can offer them too.
+// A listed room is matched to the timetable's name for it, which may add spaces, the campus letter or a note
+// ("B-103 - 105" is "B-103-105", "K-B136 (raamatukogu)" is "B-136"); listed rooms no lesson uses are added,
+// so free-room search can offer them too.
+const roomKey = (code: string) =>
+  code.replace(/\s*\(.*\)$/, "").replace(/^[KMJL]-(?=[A-Z])/, "").replace(/\s+/g, "").replace(/^([A-Z])-?(\d)/, "$1-$2").toUpperCase();
 const roomInfo = new Map<string, RoomInfo>();
 for (const { campus, url } of ROOM_LISTS) {
   try {
+    const timetableNames = new Map([...rooms].filter(([, c]) => c.has(campus)).map(([name]) => [roomKey(name), name]));
     for (const [code, info] of await fetchRoomInfo(url)) {
-      roomInfo.set(code, info);
-      add(rooms, code, campus);
+      const name = timetableNames.get(roomKey(code)) ?? code;
+      roomInfo.set(name, info);
+      add(rooms, name, campus);
     }
   } catch (e) {
     console.warn(`room details unavailable, continuing without: ${(e as Error).message}`);
