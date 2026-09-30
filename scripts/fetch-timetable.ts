@@ -8,7 +8,7 @@
  *
  *   index.json           sources, campuses, the weeks available, every class, teacher and room with
  *                        the campuses they have lessons at
- *   week-<monday>.json   that week's lessons (each tagged with its campus) and each campus's bells
+ *   week-<monday>.json   that week's lessons (each tagged with its campus), each campus's bells and lunch break
  *   lunch.json           the campuses' school lunch menus (techno.ee), when the page could be read
  *
  * Kesklinn and Mustamäe each have their own Edupage; Järve and Lasnamäe share Tahvel. Each lesson's
@@ -153,6 +153,42 @@ for (const week of weeks.values()) {
   }
 }
 
+// --- lunch breaks -----------------------------------------------------------------------------
+
+const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+/**
+ * Each campus's lunch break, which no system publishes: the midday gap between lessons (30 min or more, starting
+ * 11:00 to 13:30) its groups' days most often have, if at least a quarter of the days with lessons on both sides of
+ * noon have it. Järve has none this way: its groups eat in "Söögitund" lessons of their own.
+ */
+function lunchBreaks(lessons: Lesson[]): Partial<Record<Campus, Period>> {
+  const out: Partial<Record<Campus, Period>> = {};
+  for (const campus of Object.keys(CAMPUSES) as Campus[]) {
+    const days = new Map<string, Lesson[]>(); // a group's day
+    for (const l of lessons) {
+      if (l.campus !== campus) continue;
+      for (const c of l.classes) days.set(`${c}|${l.day}`, [...(days.get(`${c}|${l.day}`) ?? []), l]);
+    }
+    const gaps = new Map<string, number>();
+    let spanning = 0;
+    for (const day of days.values()) {
+      day.sort((a, b) => a.start.localeCompare(b.start));
+      if (day[0].start < "12:00" && day.some((l) => l.end > "12:30")) spanning++;
+      let end = day[0].end;
+      for (const l of day.slice(1)) {
+        if (end >= "11:00" && end <= "13:30" && minutes(l.start) - minutes(end) >= 30) gaps.set(`${end}-${l.start}`, (gaps.get(`${end}-${l.start}`) ?? 0) + 1);
+        if (l.end > end) end = l.end;
+      }
+    }
+    const [gap, count] = [...gaps].sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (gap && count >= spanning / 4) {
+      const [start, end] = gap.split("-");
+      out[campus] = { start, end };
+    }
+  }
+  return out;
+}
+
 // --- write ----------------------------------------------------------------------------------
 
 mkdirSync(OUT, { recursive: true });
@@ -161,7 +197,7 @@ const index = [];
 for (const [monday, week] of [...weeks].sort(([a], [b]) => a.localeCompare(b))) {
   const file = `week-${monday}.json`;
   week.lessons.sort(byTime);
-  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, periods: week.periods, lessons: week.lessons }));
+  writeFileSync(`${OUT}${file}`, JSON.stringify({ monday, periods: week.periods, lunch: lunchBreaks(week.lessons), lessons: week.lessons }));
   index.push({ monday, file, lessons: week.lessons.length });
 }
 // Room details are extra: without them the timetable still works, so a failure only warns.
