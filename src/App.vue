@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { House } from '@lucide/vue';
 import TechnoLogo from './components/TechnoLogo.vue';
+import KioskQr from './components/kiosk/KioskQr.vue';
 import { useKioskRuntime } from './kioskRuntime';
 import { useKioskStore } from './stores/kiosk';
 import { useThemeStore } from './stores/theme';
@@ -37,22 +38,29 @@ function logoClick(e) {
 </script>
 <template>
   <div class="mx-auto p-4" :class="kiosk.settings.enabled ? 'max-w-[1600px]' : 'max-w-[900px]'">
-    <header class="flex items-center gap-2.5">
+    <!-- A kiosk's header is read from across a corridor, so it is bigger, and on the home screen it carries the
+         QR code of the app in the middle: three columns keep that centred whatever the sides' widths. -->
+    <header :class="kiosk.settings.enabled ? 'grid grid-cols-[1fr_auto_1fr] items-center gap-4' : 'flex items-center gap-2.5'">
       <!-- capture: the click that ends a long press must be stopped before the link navigates -->
       <div class="select-none" @pointerdown="kiosk.settings.enabled && holdStart()" @pointerup="holdEnd" @pointerleave="holdEnd" @click.capture="logoClick"
         @contextmenu.prevent>
-        <RouterLink :to="{ name: kiosk.settings.enabled ? 'kiosk' : 'timetable' }" class="flex items-center gap-2.5" aria-label="Tunniplaan">
-          <TechnoLogo class="h-7 w-auto text-primary"></TechnoLogo>
-          <div class="h-6 w-px bg-base-content/20" aria-hidden="true"></div>
-          <h1 class="text-lg font-bold">Tunniplaan</h1>
+        <RouterLink :to="{ name: kiosk.settings.enabled ? 'kiosk' : 'timetable' }" class="flex items-center" :class="kiosk.settings.enabled ? 'gap-4' : 'gap-2.5'" aria-label="Tunniplaan">
+          <TechnoLogo class="w-auto text-primary" :class="kiosk.settings.enabled ? 'h-12' : 'h-7'"></TechnoLogo>
+          <div class="w-px bg-base-content/20" :class="kiosk.settings.enabled ? 'h-10' : 'h-6'" aria-hidden="true"></div>
+          <h1 class="font-bold" :class="kiosk.settings.enabled ? 'text-3xl' : 'text-lg'">Tunniplaan</h1>
         </RouterLink>
       </div>
       <template v-if="kiosk.settings.enabled">
-        <span class="ml-auto text-lg text-base-content/70">{{ kiosk.campusName }}</span>
-        <span class="text-2xl font-bold tabular-nums">{{ kiosk.time }}</span>
-        <RouterLink v-if="!route.path.startsWith('/kiosk')" :to="{ name: 'kiosk' }" class="btn btn-lg border-neutral">
-          <House class="size-6" aria-hidden="true" />Avaleht
-        </RouterLink>
+        <!-- the app's front page, so a passer-by can carry on on their phone -->
+        <KioskQr v-if="route.name === 'kiosk'" :to="{ name: 'timetable' }"></KioskQr>
+        <div v-else></div>
+        <div class="flex items-center justify-self-end gap-4">
+          <span class="text-2xl text-base-content/70">{{ kiosk.campusName }}</span>
+          <span class="text-5xl font-bold tabular-nums">{{ kiosk.time }}</span>
+          <RouterLink v-if="!route.path.startsWith('/kiosk')" :to="{ name: 'kiosk' }" class="btn btn-lg border-neutral">
+            <House class="size-6" aria-hidden="true" />Avaleht
+          </RouterLink>
+        </div>
       </template>
       <RouterLink v-else :to="{ name: 'settings' }" class="btn btn-square btn-ghost btn-sm ml-auto" aria-label="Seaded" title="Seaded">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5" aria-hidden="true">
