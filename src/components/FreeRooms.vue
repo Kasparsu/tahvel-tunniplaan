@@ -42,9 +42,9 @@ const seats = computed({
     <div class="mt-2.5">
         <div class="flex flex-wrap items-center gap-2">
             <ChipSelect v-model="freeCampus" :options="campusOptions" label="Õppehoone" class="grow sm:w-40 sm:grow-0"></ChipSelect>
-            <!-- while looking at now, the closed select says so -->
+            <!-- while looking at now, the closed select shows the span that works out, which is no period of its own -->
             <ChipSelect v-model="freeSlot" :options="periodOptions" label="Tund" class="grow sm:w-44 sm:grow-0"
-                :display="store.freeSlot === 'now' ? `Praegu (${store.freePeriod?.start})` : ''"></ChipSelect>
+                :display="store.freeSlot === 'now' && store.freePeriod ? `${store.freePeriod.start} - ${store.freePeriod.end}` : ''"></ChipSelect>
             <button class="btn btn-sm" :class="store.freeSlot === 'now' ? 'btn-primary' : 'border-neutral'" @click="store.showFreeNow()">Praegu</button>
         </div>
 
@@ -79,7 +79,7 @@ const seats = computed({
 
         <div v-if="store.freePeriod" class="mt-2.5 text-sm text-base-content/60">
             {{ store.freeRooms.length }} vaba ruumi,
-            {{ store.freePeriod.now ? `praegu (${store.freePeriod.start})` : `${store.freePeriod.start} - ${store.freePeriod.end}` }}
+            {{ store.freeWhen }}
             <span v-if="store.freeRoomsUnknown">· {{ store.freeRoomsUnknown }} ruumi andmed puuduvad, need on filtriga peidus</span>
         </div>
         <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">

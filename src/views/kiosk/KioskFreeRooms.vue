@@ -53,8 +53,7 @@ function openRoom(name) {
 
 const when = computed(() => {
   const chip = store.chips.find((c) => c.day === store.freeDay);
-  const p = store.freePeriod;
-  return [chip && `${chip.letter} ${chip.date}`, p && (p.now ? `praegu (${p.start})` : `${p.start} - ${p.end}`)].filter(Boolean).join(' · ');
+  return [chip && `${chip.letter} ${chip.date}`, store.freeWhen].filter(Boolean).join(' · ');
 });
 </script>
 <template>

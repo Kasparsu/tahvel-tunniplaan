@@ -9,6 +9,8 @@ const DATA_URL = `${import.meta.env.BASE_URL}data/`;
 const STORAGE_KEY = 'tahvel.selection';
 const SETTINGS_KEY = 'tahvel.settings';
 const FILTERS_KEY = 'tahvel.freeFilters';
+// How long a room has to stay free to count as free "praegu": one lesson's length.
+const FREE_WINDOW = 45;
 const NO_FILTERS = {
   seats: null, // at least this many student seats
   computers: '', // '' any room, 'any' a computer class, or a platform: 'windows', 'mac'
@@ -156,14 +158,35 @@ export const useTimetableStore = defineStore('timetable', () => {
   /** The looked-at campus's bell periods this week; the ones the free-room search offers. */
   const freePeriods = computed(() => weekData.value?.periods?.[freeCampus.value] ?? []);
   const freeIsToday = computed(() => isCurrentWeek.value && freeDay.value === todayIdx.value);
-  /** The time span looked at: a bell period, or for 'now' the current minute (so breaks work too). */
+  /**
+   * "Praegu" looks for a room free for a whole lesson's length, not just this minute: from now while
+   * a lesson is on, and from the next lesson's start during a break or lunch (a room that frees up in
+   * five minutes is of no use). Outside the day's bells it falls back to the first one, so an early
+   * morning or a late evening shows the morning slot.
+   */
+  const nowWindow = computed(() => {
+    const periods = freePeriods.value;
+    if (!periods.length) return null;
+    const now = nowTime.value;
+    const inLesson = periods.some((p) => p.start <= now && now < p.end);
+    const start = inLesson ? now : (periods.find((p) => p.start > now)?.start ?? periods[0].start);
+    return { start, end: DateTime.fromFormat(start, 'HH:mm').plus({ minutes: FREE_WINDOW }).toFormat('HH:mm'), now: true };
+  });
+
+  /** The time span looked at: a bell period, or for 'now' the 45 minutes the window above works out. */
   const freePeriod = computed(() => {
-    if (freeSlot.value === 'now') {
-      if (!freeIsToday.value) return null;
-      const next = DateTime.fromFormat(nowTime.value, 'HH:mm').plus({ minutes: 1 }).toFormat('HH:mm');
-      return { start: nowTime.value, end: next, now: true };
-    }
+    if (freeSlot.value === 'now') return freeIsToday.value ? nowWindow.value : null;
     return freePeriods.value.find((p) => p.start === freeSlot.value) ?? null;
+  });
+
+  /** The span in words: "praegu 14:12 - 14:57", "järgmine tund 12:45 - 13:30", or a picked period's range. */
+  const freeWhen = computed(() => {
+    const p = freePeriod.value;
+    if (!p) return '';
+    const range = `${p.start} - ${p.end}`;
+    if (!p.now) return range;
+    if (p.start === nowTime.value) return `praegu ${range}`;
+    return `${p.start > nowTime.value ? 'järgmine tund' : 'esimene tund'} ${range}`;
   });
 
   /**
@@ -415,7 +438,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
     selectedCampuses, isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
-    mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
+    mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeWhen, freeRooms, activeDay,
     freeFilters, freeHasInfo, freeFiltersActive, freeRoomsUnknown, toggleFreeEquipment, resetFreeFilters,
     showFreeRooms, showFreeNow, setFreeCampus, openRoom, chooseDay,
   };
