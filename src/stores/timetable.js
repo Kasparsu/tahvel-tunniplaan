@@ -410,7 +410,7 @@ export const useTimetableStore = defineStore('timetable', () => {
 
   return {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
-    isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
+    selectedCampuses, isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
     freeFilters, freeHasInfo, freeFiltersActive, freeRoomsUnknown, toggleFreeEquipment, resetFreeFilters,

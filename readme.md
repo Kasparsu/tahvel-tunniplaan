@@ -2,15 +2,16 @@
 
 Mobile-friendly timetable for Techno TLN: search a group, a teacher or a room, see the day or
 the week, and step between the weeks the school has published. "Vabad ruumid" lists the rooms of
-a campus with no lesson in a given period, and until when they stay free. Installable as an app
-(PWA) and readable offline.
+a campus with no lesson in a given period, and until when they stay free. "Koolilõuna" shows each
+campus's school lunch menu by day. Installable as an app (PWA) and readable offline.
 
 Settings → "Kioskirežiim" turns the app into a touch screen for one campus, with big panels like
 Tahvel's school board: lessons on now and next (for the campus or one building), today's lessons of a
 group or room, a group's, teacher's or room's whole week on one screen (a column per day, time
-running down with the lesson start and end times marked), and free rooms with the day, time and
-room filters in a sidebar of big buttons. Groups are picked by starting year then code, rooms by
-building then number, teachers from a surname-letter rail, so nothing needs a keyboard. A kiosk returns to its home screen after 90 s untouched, re-reads the data every 10
+running down with the lesson start and end times marked), free rooms with the day, time and room
+filters in a sidebar of big buttons, and the campus's lunch menu. Groups are picked by starting year
+then code, rooms by building then number, teachers from a surname-letter rail, so nothing needs a
+keyboard. A kiosk returns to its home screen after 90 s untouched, re-reads the data every 10
 minutes and reloads at 04:00; holding the logo for 2 s opens settings.
 
 Kesklinn publishes room details (https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json):
@@ -18,6 +19,11 @@ student seats, computers (count, Windows or Mac), projectors, interactive displa
 The fetch adds them to `index.json`, free rooms show them as icons and can be filtered by them, and
 its listed rooms without lessons count as free too. If the file cannot be fetched, the deploy goes
 on without room details.
+
+Lunch menus come from https://techno.ee/opilasele/koolilouna/, one tab per campus. The fetch reads
+them into `lunch.json` (the choice of meals, what comes with every meal, amounts, energy and
+allergens, and each campus's notes and allergen legend); if the page cannot be read, the deploy
+goes on and the lunch page says the menu is unavailable.
 
 The campuses keep their timetables in different systems, and the app merges them so one
 search covers all of them:

@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import TimetableView from './views/TimetableView.vue';
 import FreeRoomsView from './views/FreeRoomsView.vue';
+import LunchView from './views/LunchView.vue';
 import SettingsView from './views/SettingsView.vue';
 import GeneralSettingsView from './views/GeneralSettingsView.vue';
 import ThemeSettingsView from './views/ThemeSettingsView.vue';
@@ -13,6 +14,7 @@ import KioskToday from './views/kiosk/KioskToday.vue';
 import KioskTeachers from './views/kiosk/KioskTeachers.vue';
 import KioskFreeRooms from './views/kiosk/KioskFreeRooms.vue';
 import KioskWeek from './views/kiosk/KioskWeek.vue';
+import KioskLunch from './views/kiosk/KioskLunch.vue';
 
 // Hash URLs (#/seaded): GitHub Pages cannot send other paths to the app, and they work offline in the PWA too.
 export default createRouter({
@@ -20,6 +22,7 @@ export default createRouter({
   routes: [
     { path: '/', name: 'timetable', component: TimetableView },
     { path: '/vabad-ruumid', name: 'free-rooms', component: FreeRoomsView },
+    { path: '/louna', name: 'lunch', component: LunchView },
     {
       path: '/seaded',
       component: SettingsView,
@@ -38,6 +41,7 @@ export default createRouter({
     { path: '/kiosk/tana/:type(group|room)/:name', name: 'kiosk-today', component: KioskToday, props: true },
     { path: '/kiosk/opetajad', name: 'kiosk-teachers', component: KioskTeachers },
     { path: '/kiosk/vabad-ruumid', name: 'kiosk-free', component: KioskFreeRooms },
+    { path: '/kiosk/louna', name: 'kiosk-lunch', component: KioskLunch },
     {
       path: '/kiosk/nadal/:type(group|teacher|room)/:name',
       name: 'kiosk-week',
