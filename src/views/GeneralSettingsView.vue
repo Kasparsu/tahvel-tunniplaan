@@ -61,8 +61,8 @@ function startKiosk() {
       <button v-if="kiosk.settings.enabled" type="button" class="btn btn-primary mt-2 w-full" @click="startKiosk">Ava kioskivaade uues vahelehes</button>
       <p v-if="openedElsewhere" class="mt-2 text-sm text-success">Kiosk avati uues vahelehes. Selle vahelehe võid sulgeda.</p>
       <p class="text-xs text-base-content/60">
-        Puutetundliku ekraani vaade ühe õppehoone jaoks: suured paneelid, tänased tunnid ja valikud ilma klaviatuurita. Pärast 90 sekundit
-        puudutamata naaseb see avalehele. Kioskirežiimis avanevad seaded logole 2 sekundit vajutades.
+        Puutetundliku ekraani vaade ühe õppehoone jaoks: suured paneelid, tänased tunnid ja valikud ilma klaviatuurita. Kui 3 minutit keegi ekraani ei
+        puuduta, naaseb see avalehele, lõuna ajal aga näitab lõunamenüüd. Kioskirežiimis avanevad seaded logole 2 sekundit vajutades.
       </p>
     </section>
   </div>
