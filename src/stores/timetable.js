@@ -16,6 +16,7 @@ const NO_FILTERS = {
 };
 const DEFAULT_SETTINGS = {
   showFree: true, // "Vaba" cards for free periods
+  showLunch: true, // lunch cards in the lunch break
   hideEmptyDays: false, // day chips only for days with lessons
 };
 
@@ -140,7 +141,9 @@ export const useTimetableStore = defineStore('timetable', () => {
       type: sel.type,
       monday: monday.value,
       periods: weekData.value.periods,
+      lunch: weekData.value.lunch,
       showFree: settings.value.showFree,
+      showLunch: settings.value.showLunch,
       tintToday: displayType.value === 'week',
       // a selection at several campuses names the campus on each row
       campusLabel: (l) => (selectedCampuses.value.length > 1 && l.campus ? campusName(l.campus) : ''),

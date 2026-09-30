@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { DateTime } from 'luxon';
 import LunchMenu from '../components/LunchMenu.vue';
 import NavTabs from '../components/NavTabs.vue';
@@ -13,17 +14,20 @@ const KEY = 'tahvel.lunchCampus';
 const lunch = useLunchStore();
 const store = useTimetableStore();
 const kiosk = useKioskStore();
+const route = useRoute();
 onMounted(() => lunch.load());
 
-// The campus last looked at; at first the kiosk's, or the selected group's or teacher's
-const campus = ref(localStorage.getItem(KEY) || (kiosk.settings.enabled ? kiosk.campus : store.selectedCampuses[0]) || 'K');
+// A timetable's lunch row asks for its campus and day (?campus=K&date=2026-09-30). Else the campus last looked at;
+// at first the kiosk's, or the selected group's or teacher's.
+const campus = ref(route.query.campus || localStorage.getItem(KEY) || (kiosk.settings.enabled ? kiosk.campus : store.selectedCampuses[0]) || 'K');
 watch(campus, (c) => localStorage.setItem(KEY, c));
 
 const today = DateTime.now().toISODate();
 const menu = computed(() => lunch.menu(campus.value));
-const date = ref(null);
-// today's menu, or the next one, whenever the campus or the menus change
-watch([campus, () => lunch.data], () => (date.value = lunch.dayFor(campus.value, today)), { immediate: true });
+const date = ref(route.query.date || null);
+// on another campus the same day when it has a menu, else today's or the next one
+const hasDay = (d) => menu.value?.days.some((x) => x.date === d);
+watch([campus, () => lunch.data], () => (date.value = hasDay(date.value) ? date.value : lunch.dayFor(campus.value, today)), { immediate: true });
 
 // The menu's weeks, and the days of the one the picked day is in
 const mondayOf = (iso) => DateTime.fromISO(iso).startOf('week').toISODate();

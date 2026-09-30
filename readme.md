@@ -23,7 +23,11 @@ on without room details.
 Lunch menus come from https://techno.ee/opilasele/koolilouna/, one tab per campus. The fetch reads
 them into `lunch.json` (the choice of meals, what comes with every meal, amounts, energy and
 allergens, and each campus's notes and allergen legend); if the page cannot be read, the deploy
-goes on and the lunch page says the menu is unavailable.
+goes on and the lunch page says the menu is unavailable. No system publishes when lunch is, so the
+fetch takes each campus's lunch break from its groups' timetables (the midday gap most of them
+share, 11:45-12:45 at most campuses) into each week's file. A group's or teacher's timetable shows a
+"Lõuna" card with the day's meals when that break falls between their lessons, as it does Järve's
+"Söögitund" lessons; the card opens the menu. Settings → "Näita lõunat" hides them.
 
 The campuses keep their timetables in different systems, and the app merges them so one
 search covers all of them:

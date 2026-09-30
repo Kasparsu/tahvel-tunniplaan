@@ -28,5 +28,16 @@ export const useLunchStore = defineStore('lunch', () => {
     const days = menu(campus)?.days ?? [];
     return (days.find((d) => d.date >= today) ?? days.at(-1))?.date ?? null;
   }
-  return { data, missing, load, menu, dayFor };
+  /**
+   * A day's lunch in a few words for a timetable row: the meals to pick from, else the first dishes served,
+   * without the allergen letters ("Kanakarri (G, L)" is "Kanakarri").
+   */
+  function summary(campus, date) {
+    const day = menu(campus)?.days.find((d) => d.date === date);
+    if (!day) return [];
+    const choices = day.sections.filter((s) => s.choice).map((s) => s.dishes[0]?.name);
+    const names = choices.length ? choices : (day.sections[0]?.dishes ?? []).slice(0, 2).map((d) => d.name);
+    return names.filter(Boolean).map((n) => n.replace(/\s*\([A-ZÕÄÖÜ]{1,3}(,\s*[A-ZÕÄÖÜ]{1,3})*\)$/, ''));
+  }
+  return { data, missing, load, menu, dayFor, summary };
 });

@@ -1,7 +1,8 @@
 /**
  * Lessons as the rows the timetable lists: one per lesson, with free periods ("Vaba") before the
  * first lesson of a day and between lessons (not after the last), from the bell times of the campus
- * the next lesson is at. Used by the timetable and by the kiosk's "today" screens.
+ * the next lesson is at, and lunch where that campus's lunch break falls between two lessons or
+ * after those free periods (or a "Söögitund" lesson is). Used by the timetable and by the kiosk's "today" screens.
  */
 import { DateTime } from 'luxon';
 
@@ -20,6 +21,9 @@ function freeBlocks(periods, from, to) {
   return blocks;
 }
 
+/** Järve's groups have their lunch as a lesson. */
+const isLunchLesson = (l) => /^söögitund$/i.test(l.subject.trim());
+
 /** A note about one date ("25.09 iseseisva õppe päev") belongs only on that day's lessons; undated notes on all. */
 function noteFor(note, date) {
   const m = note?.match(/^(\d{1,2})\.(\d{1,2})\b/);
@@ -32,20 +36,30 @@ function noteFor(note, date) {
  * type        what was selected ('group', 'teacher', 'room'): its own field is left off the rows
  * monday      the week's Monday (luxon DateTime)
  * periods     the week's bell times per campus
+ * lunch       the week's lunch break per campus ({ start, end })
  * showFree    insert free periods
+ * showLunch   insert lunch breaks
  * tintToday   mark today's rows (the week list does)
  * campusLabel lesson → the campus name to show on its row, or ''
  */
-export function lessonRows({ lessons, type, monday, periods = {}, showFree = true, tintToday = false, campusLabel = () => '' }) {
+export function lessonRows({ lessons, type, monday, periods = {}, lunch = {}, showFree = true, showLunch = true, tintToday = false, campusLabel = () => '' }) {
   const periodsOf = (l) => periods[l.campus] ?? [];
   const withFree = [];
   let cursor = { day: -1 };
   for (const l of lessons) {
-    if (l.day !== cursor.day) cursor = { day: l.day, end: periodsOf(l)[0]?.start ?? l.start };
-    const free = showFree ? freeBlocks(periodsOf(l), cursor.end, l.start) : [];
-    for (const b of free) withFree.push({ day: l.day, ...b, free: true });
-    withFree.push(l);
+    if (l.day !== cursor.day) cursor = { day: l.day, end: periodsOf(l)[0]?.start ?? l.start, started: false };
+    // a room has no lunch; a group's or teacher's lunch break, when it falls between two of their lessons (or
+    // after the free periods a day starting later begins with)
+    const brk = lunch[l.campus];
+    const eats = showLunch && type !== 'room' && (cursor.started || showFree) && brk && brk.start >= cursor.end && brk.end <= l.start;
+    const free = showFree ? freeBlocks(periodsOf(l), cursor.end, l.start).filter((b) => !eats || b.end <= brk.start || b.start >= brk.end) : [];
+    if (eats) free.push({ ...brk, lunch: true, campus: l.campus });
+    free.sort((a, b) => a.start.localeCompare(b.start));
+    for (const b of free) withFree.push({ day: l.day, ...b, free: !b.lunch });
+    if (showLunch && isLunchLesson(l)) withFree.push({ day: l.day, start: l.start, end: l.end, lunch: true, campus: l.campus });
+    else withFree.push(l);
     if (l.end > cursor.end) cursor.end = l.end;
+    cursor.started = true;
   }
 
   return withFree.map((l) => {
@@ -58,6 +72,7 @@ export function lessonRows({ lessons, type, monday, periods = {}, showFree = tru
       isToday: tintToday && date.hasSame(DateTime.now(), 'day'),
     };
     if (l.free) return { ...row, free: true };
+    if (l.lunch) return { ...row, lunch: { campus: l.campus, date: date.toISODate() } };
     return {
       ...row,
       name: l.subject,

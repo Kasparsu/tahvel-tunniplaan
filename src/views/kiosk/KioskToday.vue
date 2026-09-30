@@ -24,17 +24,20 @@ const rows = computed(() =>
     type: props.type,
     monday: kiosk.now.startOf('week'),
     periods: kiosk.week?.periods,
+    lunch: kiosk.week?.lunch,
     // a lesson at another campus than the kiosk's says where
     campusLabel: (l) => (l.campus && l.campus !== kiosk.campus ? (timetable.index?.campuses?.[l.campus] ?? l.campus) : ''),
   }),
 );
+// the kiosk's own campus's lunch opens its lunch page
+const lunchTo = (lunch) => (lunch.campus === kiosk.campus ? { name: 'kiosk-lunch', query: { date: lunch.date } } : null);
 const fullTimetable = () => router.push({ name: 'kiosk-week', params: { type: props.type, name: props.name } });
 </script>
 <template>
   <KioskPage :title="type === 'room' ? `Ruum ${roomShort(name)}` : name" :sub="`Tänased tunnid · kell ${kiosk.time}`">
     <!-- the timetable's own rows, enlarged for a screen read from a step away -->
     <div v-if="rows.length" class="mx-auto max-w-4xl [zoom:1.4]">
-      <LessonsGrid :rows="rows" :dividers="false" :now="kiosk.time" class="mt-0"></LessonsGrid>
+      <LessonsGrid :rows="rows" :dividers="false" :now="kiosk.time" :lunch-to="lunchTo" class="mt-0"></LessonsGrid>
     </div>
     <p v-else class="rounded-box border border-dashed border-neutral p-6 text-center text-xl text-base-content/60">Täna tunde pole.</p>
     <button type="button" class="btn btn-lg mt-5 border-neutral" @click="fullTimetable">Vaata nädala tunniplaani</button>
