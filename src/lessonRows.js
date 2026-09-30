@@ -68,6 +68,7 @@ export function lessonRows({ lessons, type, monday, periods = {}, lunch = {}, sh
       day: DAY_LETTERS[l.day],
       dayName: DAY_NAMES[l.day],
       date: date.toFormat('dd.MM'),
+      iso: date.toISODate(),
       time: { start: l.start, end: l.end },
       isToday: tintToday && date.hasSame(DateTime.now(), 'day'),
     };
