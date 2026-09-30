@@ -23,8 +23,9 @@ export interface LunchSection {
 }
 export interface LunchDay {
   date: string; // ISO
-  intro?: string; // "Vali üks põhitoit:"
+  intro?: string; // "Vali üks põhitoit:", or on a day without lunch the page's own words
   sections: LunchSection[];
+  closed?: boolean; // no lunch that day ("Koolilõunat ei pakuta."), rather than no menu published
 }
 export interface CampusLunch {
   days: LunchDay[];
@@ -78,7 +79,11 @@ function day(el: HTMLElement): LunchDay | null {
     else if (cls.includes("tlmk-menu__choice-intro")) pick = text(part);
     else if (cls.includes("tlmk-menu__ingredients")) note = text(part);
   }
-  return sections.length ? { date, intro: note ?? pick, sections } : null;
+  if (sections.length) return { date, intro: note ?? pick, sections };
+  // A day can be listed only to say there is no lunch. Keep it: dropping it made the app fall back
+  // to another day's menu, as if that were today's.
+  const message = text(body);
+  return message ? { date, intro: message, sections: [], closed: true } : null;
 }
 
 const dishCount = (d?: LunchDay) => d?.sections.reduce((n, s) => n + s.dishes.length, 0) ?? 0;
@@ -98,7 +103,8 @@ export async function fetchLunch(url: string, campuses: Record<Campus, string>, 
     const days = new Map<string, LunchDay>();
     for (const el of panel.querySelectorAll(".tlmk-menu__day")) {
       const d = day(el);
-      if (d && d.date >= fromDate && dishCount(d) > dishCount(days.get(d.date))) days.set(d.date, d);
+      // a date listed twice keeps the fuller entry; a real menu beats a "no lunch" line
+      if (d && d.date >= fromDate && (!days.has(d.date) || dishCount(d) > dishCount(days.get(d.date)))) days.set(d.date, d);
     }
     out[campus] = {
       days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),

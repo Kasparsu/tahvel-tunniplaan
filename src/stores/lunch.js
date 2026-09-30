@@ -35,6 +35,7 @@ export const useLunchStore = defineStore('lunch', () => {
   function summary(campus, date) {
     const day = menu(campus)?.days.find((d) => d.date === date);
     if (!day) return [];
+    if (day.closed) return [day.intro]; // "Koolilõunat ei pakuta."
     const choices = day.sections.filter((s) => s.choice).map((s) => s.dishes[0]?.name);
     const names = choices.length ? choices : (day.sections[0]?.dishes ?? []).slice(0, 2).map((d) => d.name);
     return names.filter(Boolean).map((n) => n.replace(/\s*\([A-ZÕÄÖÜ]{1,3}(,\s*[A-ZÕÄÖÜ]{1,3})*\)$/, ''));
