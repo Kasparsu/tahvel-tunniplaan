@@ -1,11 +1,8 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { DateTime, Settings } from 'luxon';
+import { DAY_LETTERS, lessonRows } from '../lessonRows';
 Settings.defaultZone = 'Europe/Tallinn';
-
-// Constants
-const DAY_LETTERS = ['E', 'T', 'K', 'N', 'R', 'L', 'P']; // Mon-Sun
-const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev'];
 
 // Snapshot of every campus's timetable (Edupage and Tahvel), written by scripts/fetch-timetable.ts at deploy time.
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
@@ -59,25 +56,6 @@ const FIELD = { group: 'classes', teacher: 'teachers', room: 'rooms' };
 const lessonsFor = (sel, lessons) => lessons.filter((l) => l[FIELD[sel.type]].includes(sel.name));
 /** index.json's list of groups, teachers or rooms */
 const poolFor = (index, type) => (type === 'teacher' ? index.teachers : type === 'room' ? index.rooms : index.classes) ?? [];
-
-/** Bell periods lying wholly between `from` and `to`, back-to-back ones merged (08:30-09:15 + 09:15-10:00 = one block). */
-function freeBlocks(periods, from, to) {
-  const blocks = [];
-  for (const p of periods) {
-    if (p.start < from || p.end > to) continue;
-    const last = blocks.at(-1);
-    if (last?.end === p.start) last.end = p.end;
-    else blocks.push({ start: p.start, end: p.end });
-  }
-  return blocks;
-}
-
-/** A note about one date ("25.09 iseseisva õppe päev") belongs only on that day's lessons; undated notes on all. */
-function noteFor(note, date) {
-  const m = note?.match(/^(\d{1,2})\.(\d{1,2})\b/);
-  if (!m) return note;
-  return Number(m[1]) === date.day && Number(m[2]) === date.month ? note : undefined;
-}
 
 /** This week if it is published, otherwise the nearest week that is. */
 function currentWeekIdx(weeks) {
@@ -157,42 +135,15 @@ export const useTimetableStore = defineStore('timetable', () => {
     if (displayType.value === 'today') list = isCurrentWeek.value ? list.filter((l) => l.day === todayIdx.value) : [];
     if (displayType.value === 'day') list = list.filter((l) => l.day === day.value);
 
-    // Free periods before the first lesson and between lessons, not after the last one,
-    // using the bell times of the campus the next lesson is at.
-    const periodsOf = (l) => weekData.value.periods?.[l.campus] ?? [];
-    const withFree = [];
-    let cursor = { day: -1 };
-    for (const l of list) {
-      if (l.day !== cursor.day) cursor = { day: l.day, end: periodsOf(l)[0]?.start ?? l.start };
-      const free = settings.value.showFree ? freeBlocks(periodsOf(l), cursor.end, l.start) : [];
-      for (const b of free) withFree.push({ day: l.day, ...b, free: true });
-      withFree.push(l);
-      if (l.end > cursor.end) cursor.end = l.end;
-    }
-
-    return withFree.map((l) => {
-      const date = monday.value.plus({ days: l.day });
-      const card = {
-        day: DAY_LETTERS[l.day],
-        dayName: DAY_NAMES[l.day],
-        date: date.toFormat('dd.MM'),
-        time: { start: l.start, end: l.end },
-        isToday: displayType.value === 'week' && date.hasSame(DateTime.now(), 'day'),
-      };
-      if (l.free) return { ...card, free: true };
-      return {
-        ...card,
-        name: l.subject,
-        room: l.rooms.join(', '),
-        group: [...l.classes, ...l.groups].join(' '),
-        teacher: l.teachers.join(', '),
-        note: noteFor(l.note, date),
-        campus: selectedCampuses.value.length > 1 && l.campus ? campusName(l.campus) : '',
-        // each card leaves out what was searched for: a group's name the teacher, a room's the group and teacher
-        showGroup: sel.type !== 'group',
-        showTeacher: sel.type !== 'teacher',
-        showRoom: sel.type !== 'room',
-      };
+    return lessonRows({
+      lessons: list,
+      type: sel.type,
+      monday: monday.value,
+      periods: weekData.value.periods,
+      showFree: settings.value.showFree,
+      tintToday: displayType.value === 'week',
+      // a selection at several campuses names the campus on each row
+      campusLabel: (l) => (selectedCampuses.value.length > 1 && l.campus ? campusName(l.campus) : ''),
     });
   });
 
