@@ -1,15 +1,29 @@
 <script setup>
+import { computed } from 'vue';
 import { useTimetableStore } from '../stores/timetable';
+
+/**
+ * The timetable's lesson rows (src/lessonRows.js). By default the selected timetable's, with a divider
+ * per day in week view; the kiosk passes its own and the time now, fading lessons that have ended.
+ */
+const props = defineProps({
+    rows: { type: Array, default: null },
+    dividers: { type: Boolean, default: null },
+    now: { type: String, default: '' }, // HH:mm
+});
 const store = useTimetableStore();
+const list = computed(() => props.rows ?? store.lessons);
+const showDividers = computed(() => props.dividers ?? store.displayType === 'week');
+const ended = (lesson) => props.now && lesson.time.end <= props.now;
 </script>
 <template>
     <div class="mt-2.5 grid gap-2.5">
-        <template v-for="(lesson, i) in store.lessons">
-            <div v-if="store.displayType === 'week' && lesson.day !== store.lessons[i - 1]?.day" class="divider divider-primary my-1 text-sm font-semibold">
+        <template v-for="(lesson, i) in list">
+            <div v-if="showDividers && lesson.day !== list[i - 1]?.day" class="divider divider-primary my-1 text-sm font-semibold">
                 {{ lesson.dayName }}
             </div>
             <div class="grid grid-cols-[auto_auto_1fr] items-start gap-2.5 rounded-box border p-3 md:grid-cols-[30px_140px_1fr] max-[360px]:grid-cols-[30px_140px]"
-                :class="lesson.free ? 'border-dashed border-neutral text-base-content/60' : ['lesson border-base-300', lesson.isToday ? 'bg-today' : 'bg-base-200']">
+                :class="[lesson.free ? 'border-dashed border-neutral text-base-content/60' : ['lesson border-base-300', lesson.isToday ? 'bg-today' : 'bg-base-200'], { 'opacity-50': ended(lesson) }]">
                 <div class="letter mt-0.5 size-8 rounded-field text-center text-xl leading-8 font-bold" :class="lesson.free ? 'bg-neutral/40 text-neutral-content/70' : 'bg-neutral text-neutral-content'">{{ lesson.day }}</div>
                 <div class="font-bold whitespace-nowrap tabular-nums">
                     <div>{{ lesson.date }}</div>

@@ -317,6 +317,19 @@ export const useTimetableStore = defineStore('timetable', () => {
     loadWeek();
   });
 
+  /** Re-read the snapshot (a kiosk stays open for days; the deploy refreshes the data every 30 minutes). */
+  async function refresh() {
+    let fresh;
+    try {
+      fresh = await getJson('index.json');
+    } catch {
+      return; // offline: keep what there is
+    }
+    for (const file of Object.keys(weekCache)) delete weekCache[file];
+    index.value = fresh;
+    await loadWeek();
+  }
+
   async function init() {
     try {
       index.value = await getJson('index.json');
@@ -398,7 +411,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   return {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
     isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
-    init, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
+    init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeRooms, activeDay,
     freeFilters, freeHasInfo, freeFiltersActive, freeRoomsUnknown, toggleFreeEquipment, resetFreeFilters,
     showFreeRooms, showFreeNow, setFreeCampus, openRoom, chooseDay,

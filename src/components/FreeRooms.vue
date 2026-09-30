@@ -88,7 +88,7 @@ const seats = computed({
                 <div class="font-bold">{{ r.name }}</div>
                 <div v-if="r.info?.title" class="text-[13px] leading-tight">{{ r.info.title }}</div>
                 <div class="text-[13px] text-base-content/60">{{ r.until ? `vaba kuni ${r.until}` : 'vaba päeva lõpuni' }}</div>
-                <RoomFeatures v-if="r.info" :info="r.info" class="mt-1.5"></RoomFeatures>
+                <RoomFeatures v-if="r.info" :info="r.info" class="mt-1.5 text-[13px]"></RoomFeatures>
             </button>
         </div>
         <div v-if="store.weekData && (!store.freePeriod || !store.freeRooms.length)" class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60">
