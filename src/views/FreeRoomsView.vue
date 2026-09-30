@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import DayChips from '../components/DayChips.vue';
 import FreeRooms from '../components/FreeRooms.vue';
 import NavTabs from '../components/NavTabs.vue';
@@ -10,10 +11,13 @@ import { useTimetableStore } from '../stores/timetable';
 
 const store = useTimetableStore();
 const kiosk = useKioskStore();
+const route = useRoute();
 // opens on now: this week, today, the current period, the selection's campus
 onMounted(() => {
   store.showFreeRooms();
-  if (kiosk.settings.enabled) store.setFreeCampus(kiosk.campus); // a kiosk shows its own campus
+  // a kiosk shows its own campus, and so does a link scanned off one (?hoone=K)
+  const campus = kiosk.settings.enabled ? kiosk.campus : route.query.hoone;
+  if (campus) store.setFreeCampus(campus);
 });
 </script>
 <template>

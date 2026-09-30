@@ -7,6 +7,7 @@ import { useFillHeight } from '../../composables/useFillHeight';
 import { useKioskStore } from '../../stores/kiosk';
 import { useTimetableStore } from '../../stores/timetable';
 import { roomShort } from '../../codes';
+import { linkTo } from '../../deepLink';
 
 /**
  * A group's, teacher's or room's whole week on one screen: a column per day, time running down with
@@ -157,7 +158,8 @@ const nowY = computed(() => {
 });
 </script>
 <template>
-  <KioskPage :title="type === 'room' ? `Ruum ${roomShort(name)}` : name" :sub="`${TITLES[type]} · nädala tunniplaan`">
+  <KioskPage :title="type === 'room' ? `Ruum ${roomShort(name)}` : name" :sub="`${TITLES[type]} · nädala tunniplaan`"
+    :qr="monday ? linkTo({ type, name, monday: monday.toISODate() }) : null">
     <div class="-mt-2 mb-2 flex items-center justify-end gap-3">
       <button type="button" class="btn btn-lg btn-square border-neutral" :disabled="weekIdx <= 0" aria-label="Eelmine nädal" @click="shift(-1)">‹</button>
       <span class="text-xl font-semibold tabular-nums">{{ weekRange }}</span>

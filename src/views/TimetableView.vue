@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import DayChips from '../components/DayChips.vue';
 import DayWeekToggle from '../components/DayWeekToggle.vue';
 import LessonsGrid from '../components/LessonsGrid.vue';
@@ -7,10 +8,30 @@ import NavTabs from '../components/NavTabs.vue';
 import Search from '../components/Search.vue';
 import WeekSelect from '../components/WeekSelect.vue';
 import { MODE_TABS } from './modeTabs';
+import { linkFrom, linkTo } from '../deepLink';
 import { useTimetableStore } from '../stores/timetable';
 
 const store = useTimetableStore();
+const route = useRoute();
+const router = useRouter();
 onMounted(() => (store.mode = 'timetable'));
+
+// A #/plaan/... link opens what it names, once the snapshot it has to be looked up in has loaded.
+watch(
+  [() => store.index, () => route.fullPath],
+  () => route.name === 'timetable-for' && store.index && store.openLink(linkFrom(route)),
+  { immediate: true },
+);
+
+// The address bar then follows what is on screen, so it stays a link to this view and can be copied.
+// Replacing only on a real difference is also what keeps this from looping with the watch above.
+watch(
+  () => store.linkState,
+  (state) => {
+    const to = state ? linkTo(state) : { name: 'timetable' };
+    if (router.resolve(to).fullPath !== route.fullPath) router.replace(to);
+  },
+);
 </script>
 <template>
   <NavTabs :tabs="MODE_TABS" label="Vaade" class="mt-3"></NavTabs>

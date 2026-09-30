@@ -57,7 +57,7 @@ const when = computed(() => {
 });
 </script>
 <template>
-  <KioskPage title="Vabad ruumid" :sub="`${kiosk.campusName} · ${when}`">
+  <KioskPage title="Vabad ruumid" :sub="`${kiosk.campusName} · ${when}`" :qr="{ name: 'free-rooms', query: { hoone: kiosk.campus } }">
     <div ref="body" class="flex gap-4" :style="{ height: `${height}px` }">
       <aside class="grid w-80 shrink-0 content-start gap-5 overflow-y-auto pr-1">
         <section>

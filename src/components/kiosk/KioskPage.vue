@@ -1,9 +1,10 @@
 <script setup>
 import { ArrowLeft, House } from '@lucide/vue';
 import { useRouter } from 'vue-router';
+import KioskQr from './KioskQr.vue';
 
-/** A kiosk page: its title, and big back and home buttons. */
-defineProps({ title: { type: String, required: true }, sub: { type: String, default: '' } });
+/** A kiosk page: its title, big back and home buttons, and a QR code of `qr` where one leads anywhere. */
+defineProps({ title: { type: String, required: true }, sub: { type: String, default: '' }, qr: { type: Object, default: null } });
 const router = useRouter();
 </script>
 <template>
@@ -13,6 +14,7 @@ const router = useRouter();
             <h2 class="truncate text-2xl font-bold">{{ title }}</h2>
             <p v-if="sub" class="text-base-content/60">{{ sub }}</p>
         </div>
+        <KioskQr v-if="qr" :to="qr"></KioskQr>
         <RouterLink :to="{ name: 'kiosk' }" class="btn btn-lg border-neutral"><House class="size-6" aria-hidden="true" />Avaleht</RouterLink>
     </div>
     <div class="mt-4">

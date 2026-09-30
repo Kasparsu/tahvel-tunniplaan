@@ -397,14 +397,46 @@ export const useTimetableStore = defineStore('timetable', () => {
     options.value = (value.includes(' ') ? [...teachers, ...groups, ...rooms] : [...groups, ...rooms, ...teachers]).slice(0, 30);
   }
 
-  function select(selected) {
+  /** `jump` opens the next lessons; a deep link brings its own view and turns that off. */
+  function select(selected, { jump = true } = {}) {
     if (!selected) return;
     selectedSearch.value = { type: selected.type, name: selected.name };
     searchValue.value = selected.name;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedSearch.value));
     options.value = [];
-    showNextLessons();
+    if (jump) showNextLessons();
   }
+
+  /**
+   * Open what a shareable link asks for. Resolves the name against the snapshot (an old Tahvel spelling
+   * still finds its group), so a link that names nothing known leaves the view alone and reports false.
+   */
+  function openLink({ type, name, display = 'week', weekday = 0, monday = '' }) {
+    if (!index.value || !FIELD[type]) return false;
+    const pool = poolFor(index.value, type).map((e) => e.name);
+    const found = pool.find((n) => n === name) ?? pool.find((n) => sameWords(n, name));
+    if (!found) return false;
+    mode.value = 'timetable';
+    select({ type, name: found }, { jump: false }); // a new selection object, so a pending showNextLessons bails
+    const weeks = index.value.weeks ?? [];
+    const at = weeks.findIndex((w) => w.monday === monday);
+    weekIdx.value = at >= 0 ? at : currentWeekIdx(weeks);
+    displayType.value = display;
+    day.value = display === 'day' ? weekday : null;
+    return true;
+  }
+
+  /**
+   * What a link to the timetable as it stands would say, or null while nothing is picked. The current
+   * week is left unpinned, so a link copied off it keeps opening on the current week rather than ageing
+   * into this one; a week paged to is pinned, that being the point of going there.
+   */
+  const linkState = computed(() => {
+    const sel = selectedSearch.value;
+    if (!sel) return null;
+    const monday = isCurrentWeek.value ? '' : (week.value?.monday ?? '');
+    return { type: sel.type, name: sel.name, display: displayType.value, weekday: day.value, monday };
+  });
 
   function clearSearch() {
     selectedSearch.value = null;
@@ -437,7 +469,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   return {
     index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
     selectedCampuses, isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
-    init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek,
+    init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek, openLink, linkState,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeWhen, freeRooms, activeDay,
     freeFilters, freeHasInfo, freeFiltersActive, freeRoomsUnknown, toggleFreeEquipment, resetFreeFilters,
     showFreeRooms, showFreeNow, setFreeCampus, openRoom, chooseDay,

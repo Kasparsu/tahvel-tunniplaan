@@ -30,7 +30,7 @@ const sub = computed(() => {
 });
 </script>
 <template>
-  <KioskPage title="Koolilõuna" :sub="sub">
+  <KioskPage title="Koolilõuna" :sub="sub" :qr="{ name: 'lunch', query: { campus: kiosk.campus, ...(date && { date }) } }">
     <div v-if="weekDays.length > 1" class="mb-4 flex gap-2">
       <button v-for="d in weekDays" :key="d.date" type="button" class="btn btn-lg h-auto grow flex-col gap-0 py-2"
         :class="d.date === date ? 'btn-primary' : 'border-neutral bg-base-200'" @click="date = d.date">

@@ -22,6 +22,8 @@ export default createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', name: 'timetable', component: TimetableView },
+    // a shareable link to one group's, teacher's or room's timetable, the view in the query (see deepLink.js)
+    { path: '/plaan/:type(group|teacher|room)/:name', name: 'timetable-for', component: TimetableView },
     { path: '/vabad-ruumid', name: 'free-rooms', component: FreeRoomsView },
     { path: '/louna', name: 'lunch', component: LunchView },
     {

@@ -15,6 +15,13 @@ by building then number, teachers from a surname-letter rail, so nothing needs a
 returns to its home screen after 90 s untouched, re-reads the data every 10 minutes and reloads at
 04:00; holding the logo for 2 s opens settings.
 
+Every timetable has its own link: `#/plaan/<group|teacher|room>/<name>`, with `?vaade=tana` for the
+day, `?vaade=paev&paev=2` for one weekday and `?nadal=2026-10-05` for a week other than the current
+one (the current week is left out, so a copied link keeps opening on whichever week is current). The
+address bar follows what is on screen, so it is always a link worth copying, and an old Tahvel
+spelling of a name still finds its group. Each kiosk page shows its own link as a QR code, so a
+passer-by can scan the screen and take the timetable, the free rooms or the lunch menu with them.
+
 Kesklinn publishes room details (https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json):
 student seats, computers (count, Windows or Mac), projectors, interactive displays, TVs and boards.
 The fetch adds them to `index.json`, free rooms show them as icons and can be filtered by them, and
