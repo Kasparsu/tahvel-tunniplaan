@@ -9,6 +9,7 @@
  *   index.json           sources, campuses, the weeks available, every class, teacher and room with
  *                        the campuses they have lessons at
  *   week-<monday>.json   that week's lessons (each tagged with its campus) and each campus's bells
+ *   lunch.json           the campuses' school lunch menus (techno.ee), when the page could be read
  *
  * Kesklinn and Mustamäe each have their own Edupage; Järve and Lasnamäe share Tahvel. Each lesson's
  * campus comes from its room when that says (groups and teachers do move between campuses), else
@@ -24,6 +25,7 @@
  */
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { fetchEdupage } from "./providers/edupage";
+import { fetchLunch } from "./providers/lunch";
 import { fetchRoomInfo, type RoomInfo } from "./providers/rooms";
 import { fetchTahvel } from "./providers/tahvel";
 import { addDays, byTime, CAMPUSES, campusRoom, mondayOf, upstream, type Campus, type Lesson, type Period, type SourceData } from "./providers/types";
@@ -49,6 +51,9 @@ const SOURCES: Source[] = [
 ];
 /** Tahvel has every week of the year; fetch this many from this week on (it is ~2.5 MB per week). */
 const TAHVEL_WEEKS_AHEAD = 4;
+
+/** The school lunch menus of every campus, one tab each. */
+const LUNCH_URL = "https://techno.ee/opilasele/koolilouna/";
 
 /** Room details (seats, computers, equipment) the campuses publish; only Kesklinn so far. */
 const ROOM_LISTS: { campus: Campus; url: string }[] = [{ campus: "K", url: "https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json" }];
@@ -197,4 +202,14 @@ writeFileSync(
     rooms: list(rooms, roomInfo),
   }),
 );
+// Lunch menus are extra too: without them the timetable works, so a failure only warns (and that deploy has no menu).
+try {
+  const lunch = await fetchLunch(LUNCH_URL, CAMPUSES, fromMonday);
+  writeFileSync(`${OUT}lunch.json`, JSON.stringify({ source: LUNCH_URL, generated: new Date().toISOString(), campuses: lunch }));
+  const days = Object.entries(lunch).map(([c, l]) => `${c} ${l!.days.length}`).join(", ");
+  console.log(`lunch menus: ${days} days`);
+} catch (e) {
+  console.warn(`lunch menus unavailable, continuing without: ${(e as Error).message}`);
+}
+
 console.log(`${index.length} weeks, ${classes.size} classes, ${teachers.size} teachers, ${rooms.size} rooms (${roomInfo.size} with details), ${duplicates} duplicates merged -> ${OUT}${process.env.FETCH_PROXY ? ` (via ${process.env.FETCH_PROXY})` : ""}`);
