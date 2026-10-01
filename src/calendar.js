@@ -17,7 +17,9 @@ export const feedUrl = ({ type, name }) => `${FEED}/${type}/${encodeURIComponent
 export const webcalUrl = (sel) => feedUrl(sel).replace(/^https:/, 'webcal:');
 
 /**
- * Google Calendar's "add by URL" screen. Handed the https feed, which is what that field itself
- * asks for; a webcal: address there is accepted inconsistently.
+ * Google Calendar's "add by URL" dialog, opened empty for the link to be pasted into. It is not
+ * handed the feed: calendar.google.com/calendar/r?cid=<feed> refuses an https address with "Unable to
+ * add this URL", and takes a webcal: one only sometimes, while that field accepts a pasted https
+ * address reliably.
  */
-export const googleUrl = (sel) => `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl(sel))}`;
+export const GOOGLE_ADD_URL = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl';

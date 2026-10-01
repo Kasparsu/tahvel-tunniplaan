@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { CalendarPlus, Check, Copy, ExternalLink } from '@lucide/vue';
-import { feedUrl, googleUrl, webcalUrl } from '../calendar';
+import { feedUrl, GOOGLE_ADD_URL, webcalUrl } from '../calendar';
 
 /** Subscribe to the selected group's or teacher's timetable in a calendar app. */
 const props = defineProps({ selection: { type: Object, required: true } });
@@ -40,9 +40,9 @@ async function copy() {
                     <component :is="copied ? Check : Copy" class="size-4" aria-hidden="true" />
                     {{ copied ? 'Kopeeritud' : 'Kopeeri link' }}
                 </button>
-                <a :href="googleUrl(selection)" target="_blank" rel="noopener" class="btn btn-sm border-neutral">
+                <a :href="GOOGLE_ADD_URL" target="_blank" rel="noopener" class="btn btn-sm border-neutral">
                     <ExternalLink class="size-4" aria-hidden="true" />
-                    Google Calendar
+                    Ava Google Calendar
                 </a>
                 <a :href="webcalUrl(selection)" class="btn btn-sm border-neutral">
                     <CalendarPlus class="size-4" aria-hidden="true" />
@@ -52,11 +52,11 @@ async function copy() {
             <input class="input field-themed input-sm w-full font-mono text-xs" :value="url" readonly aria-label="Kalendri link"
                 @focus="(e) => e.target.select()" />
             <p class="text-xs text-base-content/50">
-                Arvutis lisa link kalendrisse ise: Google Calendar → "Muu kalender" → "URL-i järgi".
+                Google Calendar: kopeeri link, ava "Ava Google Calendar" ja kleebi link sinna — see avab kohe õige
+                akna ("Muu kalender" → "URL-i järgi"). Google tõmbab tellitud kalendrit oma graafiku järgi, nii et
+                esimesed tunnid võivad ilmuda alles mõne tunni pärast.
                 "Telefoni kalendris" annab lingi telefoni kalendrirakendusele; arvutis laeb see tavaliselt hoopis
                 faili alla, ja <strong>allalaetud faili importimine teeb ühekordse koopia, mis enam ei uuene</strong>.
-                Google tõmbab tellitud kalendrit oma graafiku järgi — esimesed tunnid võivad ilmuda alles mõne tunni
-                või päeva pärast.
             </p>
         </div>
     </div>
