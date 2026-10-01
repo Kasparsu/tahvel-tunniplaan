@@ -11,7 +11,15 @@ const FEED = 'https://tahvel-edupage-proxy.kasparsu.workers.dev/ics';
 const KINDS = ['group', 'teacher'];
 export const canSubscribe = (sel) => !!sel && KINDS.includes(sel.type);
 
-export const feedUrl = ({ type, name }) => `${FEED}/${type}/${encodeURIComponent(name)}.ics`;
+/**
+ * The name goes into the URL as a slug ("suursalu-kaspar-martin"). The worker matches names on their
+ * words, so this resolves to the same person, and the URL carries no percent-encoded spaces — which
+ * is what a URL field in a calendar app is least likely to argue with.
+ */
+const slug = (name) =>
+  name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+export const feedUrl = ({ type, name }) => `${FEED}/${type}/${slug(name)}.ics`;
 
 /** webcal: hands the feed straight to whichever calendar app the device has. */
 export const webcalUrl = (sel) => feedUrl(sel).replace(/^https:/, 'webcal:');
