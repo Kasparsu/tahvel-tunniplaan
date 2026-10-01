@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { DateTime, Settings } from 'luxon';
 import { DAY_LETTERS, lessonRows } from '../lessonRows';
+import { useBookmarksStore } from './bookmarks';
 Settings.defaultZone = 'Europe/Tallinn';
 
 // Snapshot of every campus's timetable (Edupage and Tahvel), written by scripts/fetch-timetable.ts at deploy time.
@@ -70,6 +71,7 @@ function currentWeekIdx(weeks) {
 }
 
 export const useTimetableStore = defineStore('timetable', () => {
+  const bookmarks = useBookmarksStore();
   // state
   const index = ref(null);
   const weekIdx = ref(0);
@@ -381,25 +383,51 @@ export const useTimetableStore = defineStore('timetable', () => {
     // ("Kaspar Martin Suursalu"); Edupage has "Suursalu Kaspar Martin". Same words, so match on those.
     const pool = poolFor(index.value, saved.type).map((e) => e.name);
     const name = pool.find((n) => n === saved.name) ?? pool.find((n) => sameWords(n, saved.name));
-    if (name) select({ type: saved.type, name });
+    if (name) select({ type: saved.type, name }, { record: false });
     else localStorage.removeItem(STORAGE_KEY);
   }
 
+  const hit = (type) => (e) => ({ id: `${type}:${e.name}`, name: e.name, type, campuses: e.campuses.map(campusName) });
+
+  /**
+   * Search hits for what is typed, the often viewed ones first. Under two characters (an empty box that
+   * was clicked into) the suggestions are the most viewed instead, those still in the snapshot.
+   */
   function autocomplete(value) {
-    if (!index.value || String(value).trim().length < 2) {
+    if (!index.value) {
       options.value = [];
       return;
     }
-    const hit = (type) => (e) => ({ id: `${type}:${e.name}`, name: e.name, type, campuses: e.campuses.map(campusName) });
+    if (String(value).trim().length < 2) {
+      options.value = bookmarks.topVisits
+        .map((v) => {
+          const e = poolFor(index.value, v.type).find((e) => e.name === v.name);
+          return e && { ...hit(v.type)(e), frequent: true };
+        })
+        .filter(Boolean)
+        .slice(0, 6);
+      return;
+    }
     const find = (type) => poolFor(index.value, type).filter((e) => matches(value, e.name)).map(hit(type));
     const [groups, teachers, rooms] = ['group', 'teacher', 'room'].map(find);
     // a space usually means a person's name, otherwise a group or room code
-    options.value = (value.includes(' ') ? [...teachers, ...groups, ...rooms] : [...groups, ...rooms, ...teachers]).slice(0, 30);
+    const all = value.includes(' ') ? [...teachers, ...groups, ...rooms] : [...groups, ...rooms, ...teachers];
+    // a stable sort, so hits never viewed keep the order above
+    options.value = all
+      .map((o) => ({ ...o, frequent: bookmarks.visitCount(o) > 0 }))
+      .sort((a, b) => bookmarks.visitCount(b) - bookmarks.visitCount(a))
+      .slice(0, 30);
   }
 
-  /** `jump` opens the next lessons; a deep link brings its own view and turns that off. */
-  function select(selected, { jump = true } = {}) {
+  /**
+   * `jump` opens the next lessons; a deep link brings its own view and turns that off. `record` counts it
+   * as viewed (not when the last selection is put back on start); only a change counts, as a link is
+   * opened again each time the view on it changes.
+   */
+  function select(selected, { jump = true, record = true } = {}) {
     if (!selected) return;
+    const prev = selectedSearch.value;
+    if (record && (prev?.type !== selected.type || prev?.name !== selected.name)) bookmarks.recordVisit(selected);
     selectedSearch.value = { type: selected.type, name: selected.name };
     searchValue.value = selected.name;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedSearch.value));
