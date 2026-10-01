@@ -33,25 +33,30 @@ async function copy() {
                 Telli <strong>{{ selection.name }}</strong> tunniplaan oma kalendrisse. Kalender uueneb ise, kui tunniplaan muutub —
                 faili pole vaja uuesti lisada.
             </p>
+            <!-- the https link first: it is the one that works everywhere. webcal: subscribes properly on a
+                 phone, but a desktop browser with no handler for it just downloads the file instead. -->
             <div class="flex flex-wrap gap-2">
-                <a :href="webcalUrl(selection)" class="btn btn-primary btn-sm">
-                    <CalendarPlus class="size-4" aria-hidden="true" />
-                    Ava kalendris
-                </a>
+                <button type="button" class="btn btn-primary btn-sm" @click="copy">
+                    <component :is="copied ? Check : Copy" class="size-4" aria-hidden="true" />
+                    {{ copied ? 'Kopeeritud' : 'Kopeeri link' }}
+                </button>
                 <a :href="googleUrl(selection)" target="_blank" rel="noopener" class="btn btn-sm border-neutral">
                     <ExternalLink class="size-4" aria-hidden="true" />
                     Google Calendar
                 </a>
-                <button type="button" class="btn btn-sm border-neutral" @click="copy">
-                    <component :is="copied ? Check : Copy" class="size-4" aria-hidden="true" />
-                    {{ copied ? 'Kopeeritud' : 'Kopeeri link' }}
-                </button>
+                <a :href="webcalUrl(selection)" class="btn btn-sm border-neutral">
+                    <CalendarPlus class="size-4" aria-hidden="true" />
+                    Telefoni kalendris
+                </a>
             </div>
             <input class="input field-themed input-sm w-full font-mono text-xs" :value="url" readonly aria-label="Kalendri link"
                 @focus="(e) => e.target.select()" />
             <p class="text-xs text-base-content/50">
-                "Ava kalendris" annab lingi seadme kalendrirakendusele. Kui see ei avane, kopeeri link ja lisa see kalendris
-                ise (Google Calendar: "Muu kalender" → "URL-i järgi").
+                Arvutis lisa link kalendrisse ise: Google Calendar → "Muu kalender" → "URL-i järgi".
+                "Telefoni kalendris" annab lingi telefoni kalendrirakendusele; arvutis laeb see tavaliselt hoopis
+                faili alla, ja <strong>allalaetud faili importimine teeb ühekordse koopia, mis enam ei uuene</strong>.
+                Google tõmbab tellitud kalendrit oma graafiku järgi — esimesed tunnid võivad ilmuda alles mõne tunni
+                või päeva pärast.
             </p>
         </div>
     </div>

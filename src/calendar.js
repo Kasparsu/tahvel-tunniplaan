@@ -16,5 +16,8 @@ export const feedUrl = ({ type, name }) => `${FEED}/${type}/${encodeURIComponent
 /** webcal: hands the feed straight to whichever calendar app the device has. */
 export const webcalUrl = (sel) => feedUrl(sel).replace(/^https:/, 'webcal:');
 
-/** Google Calendar's "add by URL" screen, which many phones reach more reliably than webcal:. */
-export const googleUrl = (sel) => `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalUrl(sel))}`;
+/**
+ * Google Calendar's "add by URL" screen. Handed the https feed, which is what that field itself
+ * asks for; a webcal: address there is accepted inconsistently.
+ */
+export const googleUrl = (sel) => `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl(sel))}`;
