@@ -22,6 +22,15 @@ address bar follows what is on screen, so it is always a link worth copying, and
 spelling of a name still finds its group. Each kiosk page shows its own link as a QR code, so a
 passer-by can scan the screen and take the timetable, the free rooms or the lunch menu with them.
 
+A group's or teacher's timetable can also be subscribed to in a calendar app: "Lisa kalendrisse"
+under the lessons offers the feed as a `webcal:` link, as a Google Calendar "add by URL" link, and
+as a URL to copy. Because it is a subscription rather than an imported file, a room or time change
+reaches the calendar on its own. The worker serves the feed (`/ics/{group,teacher}/<name>.ics`,
+`worker/src/ics.ts`), built on request from the same snapshot the site reads: there are 500-odd
+groups and teachers, and a file each would be some 17 MB on every deploy, into a branch committed
+twice an hour. Lessons are published as local times, so events carry UTC stamps and need no
+VTIMEZONE; bookings (`BRON`) are left out, and rooms get no feed.
+
 Kesklinn publishes room details (https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json):
 student seats, computers (count, Windows or Mac), projectors, interactive displays, TVs and boards.
 The fetch adds them to `index.json`, free rooms show them as icons and can be filtered by them, and
@@ -74,7 +83,8 @@ are joined into double lessons, and its bell schedule is read off the event time
 
 Edupage's school servers drop connections from some GitHub Actions IPs, so the deploy workflow
 fetches through a Cloudflare Worker (`worker/`, deploy with `bun run worker:deploy`) that only
-relays the timetable endpoints above.
+relays the timetable endpoints above. The same worker serves the calendar feeds, so deploy it after
+changing either; `bunx wrangler dev -c worker/wrangler.jsonc` runs it locally.
 
 Selections saved by the earlier Tahvel-based version are carried over by name.
 

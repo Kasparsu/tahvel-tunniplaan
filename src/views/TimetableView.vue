@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import CalendarSync from '../components/CalendarSync.vue';
 import DayChips from '../components/DayChips.vue';
 import DayWeekToggle from '../components/DayWeekToggle.vue';
 import LessonsGrid from '../components/LessonsGrid.vue';
@@ -8,6 +9,7 @@ import NavTabs from '../components/NavTabs.vue';
 import Search from '../components/Search.vue';
 import WeekSelect from '../components/WeekSelect.vue';
 import { MODE_TABS } from './modeTabs';
+import { canSubscribe } from '../calendar';
 import { linkFrom, linkTo } from '../deepLink';
 import { useTimetableStore } from '../stores/timetable';
 
@@ -47,4 +49,5 @@ watch(
   <div class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60" v-if="store.emptyMessage">
     {{ store.emptyMessage }}
   </div>
+  <CalendarSync v-if="canSubscribe(store.selectedSearch)" :selection="store.selectedSearch"></CalendarSync>
 </template>
