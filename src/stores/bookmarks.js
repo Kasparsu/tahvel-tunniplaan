@@ -1,10 +1,11 @@
 /**
- * How often each group, teacher and room has been looked at. It stays on the device; the visit counts put
- * the often viewed ones first in the search's suggestions.
+ * Favourite groups, teachers and rooms, and how often each has been looked at. Both stay on the device;
+ * the visit counts put the often viewed ones first in the search's suggestions.
  */
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 
+const FAVORITES_KEY = 'tahvel.favorites'; // [{ type, name }] in the order they were added
 const VISITS_KEY = 'tahvel.visits'; // { 'type:name': { type, name, count, last } }
 const MAX_VISITS = 100; // the least visited are forgotten past this
 
@@ -19,8 +20,18 @@ function load(key, fallback) {
 }
 
 export const useBookmarksStore = defineStore('bookmarks', () => {
+  const favorites = ref(load(FAVORITES_KEY, []));
   const visits = ref(load(VISITS_KEY, {}));
+  watch(favorites, (f) => localStorage.setItem(FAVORITES_KEY, JSON.stringify(f)), { deep: true });
   watch(visits, (v) => localStorage.setItem(VISITS_KEY, JSON.stringify(v)), { deep: true });
+
+  const favoriteKeys = computed(() => new Set(favorites.value.map(keyOf)));
+  const isFavorite = (sel) => !!sel && favoriteKeys.value.has(keyOf(sel));
+
+  function toggleFavorite(sel) {
+    if (!sel) return;
+    favorites.value = isFavorite(sel) ? favorites.value.filter((f) => keyOf(f) !== keyOf(sel)) : [...favorites.value, { type: sel.type, name: sel.name }];
+  }
 
   function recordVisit(sel) {
     const key = keyOf(sel);
@@ -39,5 +50,5 @@ export const useBookmarksStore = defineStore('bookmarks', () => {
   /** The most visited first, the latest breaking a tie. */
   const topVisits = computed(() => Object.values(visits.value).sort((a, b) => b.count - a.count || b.last - a.last));
 
-  return { recordVisit, visitCount, topVisits };
+  return { favorites, isFavorite, toggleFavorite, recordVisit, visitCount, topVisits };
 });
