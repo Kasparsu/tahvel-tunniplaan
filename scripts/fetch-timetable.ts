@@ -24,6 +24,7 @@
  *   FETCH_PROXY=https://tahvel-edupage-proxy.<account>.workers.dev bun run fetch
  */
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { fetchEdupage } from "./providers/edupage";
 import { fetchLunch } from "./providers/lunch";
 import { fetchRoomInfo, type RoomInfo } from "./providers/rooms";
@@ -58,7 +59,7 @@ const LUNCH_URL = "https://techno.ee/opilasele/koolilouna/";
 /** Room details (seats, computers, equipment) the campuses publish; only Kesklinn so far. */
 const ROOM_LISTS: { campus: Campus; url: string }[] = [{ campus: "K", url: "https://technoweb.blob.core.windows.net/ruumiplaanid/kesklinn.json" }];
 
-const OUT = new URL("../public/data/", import.meta.url).pathname;
+const OUT = fileURLToPath(new URL("../public/data/", import.meta.url));
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Tallinn" });
 const thisMonday = mondayOf(today);
 const fromMonday = addDays(thisMonday, -7);
