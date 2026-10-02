@@ -1,20 +1,25 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { DateTime } from 'luxon';
+import CodeLink from './CodeLink.vue';
+import { useCodeLinks } from '../composables/useCodeLinks';
 import { useFillHeight } from '../composables/useFillHeight';
 import { roomShort } from '../codes';
 
 /**
  * A group's, teacher's or room's whole week on one screen: a column per day, time running down with
  * the week's lesson start and end times marked, lessons at the same time side by side within their
- * day. Fills the screen down to the footer, but no lower than `minHeight`.
+ * day. Fills the screen down to the footer, but no lower than `minHeight`. A block tall enough names
+ * its rooms, groups and teachers as small buttons to their timetables.
  */
 const props = defineProps({
   lessons: { type: Array, required: true }, // the week's lessons, as in week-<monday>.json
   type: { type: String, required: true }, // 'group', 'teacher' or 'room': what the blocks leave out
   monday: { type: Object, default: null }, // luxon DateTime
   minHeight: { type: Number, default: 240 },
+  codeTo: { type: Function, default: null }, // where a room, group or teacher leads (see useCodeLinks)
 });
+const codeLink = useCodeLinks(() => props.codeTo);
 
 const DAY_NAMES = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev'];
 const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -76,13 +81,16 @@ const columns = computed(() =>
   }),
 );
 
-/** What a block says besides time and subject: whichever of room, group and teacher the week is not about. */
+/**
+ * What a block names besides time and subject: whichever of rooms, groups and teachers the week is not
+ * about, short (a room without its building's name, a teacher by surname).
+ */
 function details(l) {
   return [
-    props.type !== 'room' && l.rooms.map(roomShort).join(', '),
-    props.type !== 'group' && [...l.classes, ...l.groups].join(', '),
-    props.type !== 'teacher' && l.teachers.join(', '),
-  ].filter(Boolean);
+    ...(props.type !== 'room' ? l.rooms.map((r) => ({ type: 'room', name: r, label: roomShort(r) })) : []),
+    ...(props.type !== 'group' ? l.classes.map((g) => ({ type: 'group', name: g, label: g })) : []),
+    ...(props.type !== 'teacher' ? l.teachers.map((t) => ({ type: 'teacher', name: t, label: t.split(' ')[0] })) : []),
+  ];
 }
 
 const body = ref(null);
@@ -111,7 +119,7 @@ const marks = computed(() => {
 /** How many lines of the subject fit a block, below its time and above its details; the rest ends in "…". */
 function subjectLines(p) {
   const blockHeight = (minutes(p.l.end) - minutes(p.l.start)) * pxPerMinute.value - 4;
-  const detailsHeight = blockHeight > 70 ? 16 : 0;
+  const detailsHeight = blockHeight > 70 ? 22 : 0;
   return Math.max(1, Math.floor((blockHeight - 8 - 16 - detailsHeight) / 20));
 }
 const nowY = computed(() => {
@@ -148,7 +156,10 @@ const nowY = computed(() => {
         <div class="overflow-hidden text-base font-bold hyphens-auto [overflow-wrap:anywhere]" :style="{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: subjectLines(p) }">
           {{ p.l.subject }}
         </div>
-        <div v-if="(minutes(p.l.end) - minutes(p.l.start)) * pxPerMinute > 70" class="truncate text-xs text-base-content/70">{{ details(p.l).join(' · ') }}</div>
+        <!-- one row of buttons; what does not fit stays hidden -->
+        <div v-if="(minutes(p.l.end) - minutes(p.l.start)) * pxPerMinute > 70" class="mt-0.5 flex h-5 flex-wrap gap-0.5 overflow-hidden text-xs text-base-content/70">
+          <CodeLink v-for="d in details(p.l)" :key="d.type + d.name" :to="codeLink(d.type, d.name)" :title="d.name" size="tiny">{{ d.label }}</CodeLink>
+        </div>
       </div>
       <!-- the time now -->
       <span v-if="c.today && nowY" class="absolute inset-x-0 h-0.5 bg-error" :style="{ top: nowY }" aria-label="praegu"></span>

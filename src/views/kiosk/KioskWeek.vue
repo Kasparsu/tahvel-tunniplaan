@@ -55,6 +55,9 @@ watch(
   { immediate: true },
 );
 
+// a room, group or teacher opens its own week, the same week, kept in the kiosk
+const codeTo = (type, name) => ({ name: 'kiosk-week', params: { type, name }, query: monday.value ? { week: monday.value.toISODate() } : {} });
+
 const lessons = computed(() => (data.value?.lessons ?? []).filter((l) => l[FIELD[props.type]].includes(props.name) && l.subject !== 'BRON'));
 </script>
 <template>
@@ -66,7 +69,7 @@ const lessons = computed(() => (data.value?.lessons ?? []).filter((l) => l[FIELD
       <button type="button" class="btn btn-lg btn-square border-neutral" :disabled="weekIdx < 0 || weekIdx >= weeks.length - 1" aria-label="Järgmine nädal" @click="shift(1)">›</button>
     </div>
 
-    <WeekGrid :lessons="lessons" :type="type" :monday="monday"></WeekGrid>
+    <WeekGrid :lessons="lessons" :type="type" :monday="monday" :code-to="codeTo"></WeekGrid>
     <p v-if="data && !lessons.length" class="mt-3 text-center text-xl text-base-content/60">Sel nädalal tunde pole.</p>
   </KioskPage>
 </template>

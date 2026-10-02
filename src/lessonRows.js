@@ -79,6 +79,10 @@ export function lessonRows({ lessons, type, monday, periods = {}, lunch = {}, sh
       name: l.subject,
       room: l.rooms.join(', '),
       group: [...l.classes, ...l.groups].join(' '),
+      rooms: l.rooms,
+      classes: l.classes,
+      subgroups: l.groups, // "rühm 1": part of a group, not a timetable of its own
+      teachers: l.teachers,
       teacher: l.teachers.join(', '),
       note: noteFor(l.note, date),
       campus: campusLabel(l),

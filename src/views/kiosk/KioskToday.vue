@@ -8,6 +8,7 @@ import { useKioskStore } from '../../stores/kiosk';
 import { useTimetableStore } from '../../stores/timetable';
 import { roomShort } from '../../codes';
 import { linkTo } from '../../deepLink';
+import { kioskCodeTo } from './kioskPick';
 
 /**
  * A group's, teacher's or room's lessons today, at any campus, listed like the timetable with its free
@@ -40,7 +41,7 @@ const fullTimetable = () => router.push({ name: 'kiosk-week', params: { type: pr
     :qr="linkTo({ type, name, display: 'today' })">
     <!-- the timetable's own rows, enlarged for a screen read from a step away -->
     <div v-if="rows.length" class="mx-auto max-w-4xl [zoom:1.4]">
-      <LessonsGrid :rows="rows" :dividers="false" :now="kiosk.time" :lunch-to="lunchTo" class="mt-0"></LessonsGrid>
+      <LessonsGrid :rows="rows" :dividers="false" :now="kiosk.time" :lunch-to="lunchTo" :code-to="kioskCodeTo" class="mt-0"></LessonsGrid>
     </div>
     <p v-else class="rounded-box border border-dashed border-neutral p-6 text-center text-xl text-base-content/60">Täna tunde pole.</p>
     <button type="button" class="btn btn-lg mt-5 border-neutral" @click="fullTimetable">Vaata nädala tunniplaani</button>
