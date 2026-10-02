@@ -38,7 +38,8 @@ function logoClick(e) {
 }
 </script>
 <template>
-  <div class="mx-auto p-4" :class="kiosk.settings.enabled ? 'max-w-[1600px]' : 'max-w-[900px]'">
+  <!-- the week grid gets the width of a wide screen -->
+  <div class="mx-auto p-4" :class="kiosk.settings.enabled ? 'max-w-[1600px]' : store.showWeekGrid && route.name?.startsWith('timetable') ? 'max-w-[900px] md:max-w-[1400px]' : 'max-w-[900px]'">
     <!-- A kiosk's header is read from across a corridor, so it is bigger, and on the home screen it carries the
          QR code of the app in the middle: three columns keep that centred whatever the sides' widths. -->
     <header :class="kiosk.settings.enabled ? 'grid grid-cols-[1fr_auto_1fr] items-center gap-4' : 'flex items-center gap-2.5'">

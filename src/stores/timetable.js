@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
   showFree: true, // "Vaba" cards for free periods
   showLunch: true, // lunch cards in the lunch break
   hideEmptyDays: false, // day chips only for days with lessons
+  weekGrid: false, // the week as a grid of day columns (wide screens)
 };
 
 function loadFreeFilters() {
@@ -131,6 +132,11 @@ export const useTimetableStore = defineStore('timetable', () => {
     if (!sel || !index.value) return [];
     return poolFor(index.value, sel.type).find((e) => e.name === sel.name)?.campuses ?? [];
   });
+
+  /** The selection's lessons this week, as they are in the snapshot (for the week grid). */
+  const weekLessons = computed(() => (selectedSearch.value && weekData.value ? lessonsFor(selectedSearch.value, weekData.value.lessons) : []));
+  /** The week grid stands in for the list in week view, on screens wide enough for it. */
+  const showWeekGrid = computed(() => settings.value.weekGrid && displayType.value === 'week' && !!selectedSearch.value);
 
   const lessons = computed(() => {
     const sel = selectedSearch.value;
@@ -495,7 +501,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   }
 
   return {
-    index, weekIdx, weekData, day, displayType, searchValue, options, selectedSearch, loadError, settings,
+    index, weekIdx, weekData, monday, weekLessons, showWeekGrid, day, displayType, searchValue, options, selectedSearch, loadError, settings,
     selectedCampuses, isCurrentWeek, showingToday, hasPrevWeek, hasNextWeek, chips, weekRange, updated, sources, lessons, emptyMessage,
     init, refresh, fetchWeek, autocomplete, select, clearSearch, toggle, setDay, shiftWeek, openLink, linkState,
     mode, campuses, freeCampus, freeDay, freeSlot, freePeriods, freePeriod, freeWhen, freeRooms, activeDay,

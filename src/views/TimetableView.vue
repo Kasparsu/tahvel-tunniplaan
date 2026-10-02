@@ -7,6 +7,7 @@ import DayWeekToggle from '../components/DayWeekToggle.vue';
 import LessonsGrid from '../components/LessonsGrid.vue';
 import NavTabs from '../components/NavTabs.vue';
 import Search from '../components/Search.vue';
+import WeekGrid from '../components/WeekGrid.vue';
 import WeekSelect from '../components/WeekSelect.vue';
 import { MODE_TABS } from './modeTabs';
 import { canSubscribe } from '../calendar';
@@ -45,7 +46,14 @@ watch(
   </div>
 
   <DayChips></DayChips>
-  <LessonsGrid></LessonsGrid>
+  <!-- the week grid needs a wide screen; a phone keeps the list -->
+  <template v-if="store.showWeekGrid">
+    <div class="mt-2.5 hidden md:block">
+      <WeekGrid :lessons="store.weekLessons" :type="store.selectedSearch.type" :monday="store.monday" :min-height="520"></WeekGrid>
+    </div>
+    <LessonsGrid class="md:hidden"></LessonsGrid>
+  </template>
+  <LessonsGrid v-else></LessonsGrid>
   <div class="mt-2.5 rounded-box border border-dashed border-neutral p-3.5 text-center text-base-content/60" v-if="store.emptyMessage">
     {{ store.emptyMessage }}
   </div>
