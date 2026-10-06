@@ -21,6 +21,28 @@ function freeBlocks(periods, from, to) {
   return blocks;
 }
 
+/**
+ * Which numbered lessons a span covers, from the campus's bell times: the periods lying inside it.
+ * A lesson is 45 minutes, so a double block covers two, and one running across the lunch break still
+ * covers only the two it teaches, the break being no period. Anything off the bell schedule (an early
+ * consultation, an all-day course) lies inside none and gets no number.
+ */
+function periodSpan(periods, start, end) {
+  const inside = periods.map((p, i) => ({ p, i })).filter(({ p }) => p.start >= start && p.end <= end);
+  if (!inside.length) return null;
+  const first = inside[0].i + 1;
+  const last = inside.at(-1).i + 1;
+  const count = inside.length;
+  return {
+    first,
+    last,
+    count,
+    label: first === last ? `${first}. tund` : `${first}.-${last}. tund`,
+    // the count spelled out, for the title on the bare number next to the label
+    countLabel: count === 1 ? '1 tund' : `${count} tundi`,
+  };
+}
+
 /** Järve's groups have their lunch as a lesson. */
 const isLunchLesson = (l) => /^söögitund$/i.test(l.subject.trim());
 
@@ -55,7 +77,8 @@ export function lessonRows({ lessons, type, monday, periods = {}, lunch = {}, sh
     const free = showFree ? freeBlocks(periodsOf(l), cursor.end, l.start).filter((b) => !eats || b.end <= brk.start || b.start >= brk.end) : [];
     if (eats) free.push({ ...brk, lunch: true, campus: l.campus });
     free.sort((a, b) => a.start.localeCompare(b.start));
-    for (const b of free) withFree.push({ day: l.day, ...b, free: !b.lunch });
+    // the span is worked out here, while the campus whose bells the block came from is still known
+    for (const b of free) withFree.push({ day: l.day, ...b, free: !b.lunch, span: b.lunch ? null : periodSpan(periodsOf(l), b.start, b.end) });
     if (showLunch && isLunchLesson(l)) withFree.push({ day: l.day, start: l.start, end: l.end, lunch: true, campus: l.campus });
     else withFree.push(l);
     if (l.end > cursor.end) cursor.end = l.end;
@@ -72,10 +95,11 @@ export function lessonRows({ lessons, type, monday, periods = {}, lunch = {}, sh
       time: { start: l.start, end: l.end },
       isToday: tintToday && date.hasSame(DateTime.now(), 'day'),
     };
-    if (l.free) return { ...row, free: true };
+    if (l.free) return { ...row, free: true, span: l.span };
     if (l.lunch) return { ...row, lunch: { campus: l.campus, date: date.toISODate() } };
     return {
       ...row,
+      span: periodSpan(periodsOf(l), l.start, l.end),
       name: l.subject,
       room: l.rooms.join(', '),
       group: [...l.classes, ...l.groups].join(' '),

@@ -59,6 +59,11 @@ const current = (lesson) => {
                 <div class="font-bold whitespace-nowrap tabular-nums">
                     <div>{{ lesson.date }}</div>
                     <div>{{ lesson.time.start }} - {{ lesson.time.end }}</div>
+                    <!-- which numbered lessons of the day this is, and how many; nothing off the bell schedule -->
+                    <div v-if="lesson.span" class="text-[13px] font-normal text-base-content/60">
+                        {{ lesson.span.label }}
+                        <span class="text-base-content/45" :title="lesson.span.countLabel">({{ lesson.span.count }})</span>
+                    </div>
                 </div>
                 <div v-if="lesson.free" class="flex items-center gap-2 self-center text-[15px] md:text-base">
                     Vaba<span v-if="current(lesson)" class="badge badge-sm badge-primary">Praegu</span>
