@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { House } from '@lucide/vue';
 import CopyLink from './components/CopyLink.vue';
@@ -17,6 +17,8 @@ const router = useRouter();
 useThemeStore(); // applies the theme on every page
 useKioskRuntime();
 onMounted(store.init);
+// "Ilma animatsioonideta" in settings: style.css drops hover and press motion under this attribute
+watchEffect(() => (document.documentElement.dataset.motion = store.settings.noAnimations ? 'off' : 'on'));
 
 // A kiosk hides the settings gear; holding the logo for 2 s opens settings instead
 let hold;

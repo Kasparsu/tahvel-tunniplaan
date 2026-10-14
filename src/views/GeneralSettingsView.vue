@@ -46,6 +46,10 @@ function startKiosk() {
         <span>Peida päevad, kus tunde pole</span>
         <input type="checkbox" class="toggle toggle-primary" v-model="store.settings.hideEmptyDays" />
       </label>
+      <label class="flex cursor-pointer items-center justify-between gap-3 py-1.5">
+        <span>Ilma animatsioonideta</span>
+        <input type="checkbox" class="toggle toggle-primary" v-model="store.settings.noAnimations" />
+      </label>
     </section>
 
     <section>

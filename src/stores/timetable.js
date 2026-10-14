@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS = {
   showLunch: true, // lunch cards in the lunch break
   hideEmptyDays: false, // day chips only for days with lessons
   weekGrid: false, // the week as a grid of day columns (wide screens)
+  noAnimations: false, // hover and press effects without motion (style.css, [data-motion="off"])
 };
 
 function loadFreeFilters() {

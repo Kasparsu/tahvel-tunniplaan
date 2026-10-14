@@ -178,6 +178,29 @@
   }
 }
 
+/*
+ * Settings → "Ilma animatsioonideta": no motion on hover or press. Colours still change, at once; the
+ * growing bar under hovered lessons, growing icons and shrinking pressed tiles are left out.
+ */
+[data-motion="off"] {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  .btn-ghost:hover,
+  .btn:active,
+  *:active {
+    transform: none !important;
+    scale: none !important;
+    translate: none !important;
+  }
+  .lesson::after {
+    display: none;
+  }
+}
+
 /* Text inputs and selects bordered like the chips and buttons, focused in the theme's primary colour
    (an open select is focused too; a :open selector here does not survive the CSS build) */
 @utility field-themed {
