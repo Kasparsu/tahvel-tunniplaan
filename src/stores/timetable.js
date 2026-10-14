@@ -79,6 +79,9 @@ export const useTimetableStore = defineStore('timetable', () => {
   const weekData = ref(null);
   const day = ref(null);
   const displayType = ref('week');
+  // "Täna" showing the next lessons (today's, or a later day's when today has none left): the link then says
+  // "today" rather than that day, so it keeps meaning the next lessons whenever it is opened
+  const followingNext = ref(false);
   const searchValue = ref('');
   const options = ref([]);
   const selectedSearch = ref(null);
@@ -103,7 +106,7 @@ export const useTimetableStore = defineStore('timetable', () => {
   const isCurrentWeek = computed(() => monday.value.hasSame(DateTime.now(), 'week'));
   const todayIdx = computed(() => DateTime.now().weekday - 1);
   const showingToday = computed(
-    () => displayType.value === 'today' || (displayType.value === 'day' && isCurrentWeek.value && day.value === todayIdx.value),
+    () => displayType.value === 'today' || followingNext.value || (displayType.value === 'day' && isCurrentWeek.value && day.value === todayIdx.value),
   );
   const hasPrevWeek = computed(() => weekIdx.value > 0);
   const hasNextWeek = computed(() => !!index.value && weekIdx.value < index.value.weeks.length - 1);
@@ -319,8 +322,10 @@ export const useTimetableStore = defineStore('timetable', () => {
    * Open the day of the selection's next lesson that has not ended yet: today if lessons remain, else a later day or week.
    * Resolves false when there is nothing to show, leaving the view as it was.
    */
+  let jumps = 0; // a jump still waiting on its week files gives way to anything asked for since
   async function showNextLessons() {
     const sel = selectedSearch.value;
+    const jump = ++jumps;
     if (!sel) return false;
     const weeks = index.value?.weeks ?? [];
     const now = DateTime.now();
@@ -331,7 +336,7 @@ export const useTimetableStore = defineStore('timetable', () => {
       } catch {
         return false;
       }
-      if (selectedSearch.value !== sel) return true; // user picked something else meanwhile, leave the view alone
+      if (selectedSearch.value !== sel || jump !== jumps) return true; // something else asked for meanwhile, leave the view alone
       const monday = DateTime.fromISO(weeks[i].monday);
       const ends = (l) => DateTime.fromISO(`${monday.plus({ days: l.day }).toISODate()}T${l.end}`);
       const next = lessonsFor(sel, data.lessons)
@@ -340,6 +345,7 @@ export const useTimetableStore = defineStore('timetable', () => {
       if (next) {
         weekIdx.value = i;
         setDay(next.day);
+        followingNext.value = true;
         return true;
       }
     }
@@ -450,6 +456,13 @@ export const useTimetableStore = defineStore('timetable', () => {
     const pool = poolFor(index.value, type).map((e) => e.name);
     const found = pool.find((n) => n === name) ?? pool.find((n) => sameWords(n, name));
     if (!found) return false;
+    // already showing it (the address bar was just updated to what is on screen): nothing to redo
+    const cur = linkState.value;
+    const same = cur && cur.type === type && cur.name === found && cur.display === display;
+    if (same && (display === 'today' || (cur.monday === monday && (display !== 'day' || cur.weekday === weekday)))) {
+      if (display !== 'today') jumps++; // a link to a week or day wins over a jump still loading (a restored selection's)
+      return true;
+    }
     mode.value = 'timetable';
     select({ type, name: found }, { jump: false }); // a new selection object, so a pending showNextLessons bails
     const weeks = index.value.weeks ?? [];
@@ -457,6 +470,9 @@ export const useTimetableStore = defineStore('timetable', () => {
     weekIdx.value = at >= 0 ? at : currentWeekIdx(weeks);
     displayType.value = display;
     day.value = display === 'day' ? weekday : null;
+    followingNext.value = false;
+    // "today" means the next lessons, worked out now: today's, or the next day that has some
+    if (display === 'today') showNextLessons();
     return true;
   }
 
@@ -469,11 +485,13 @@ export const useTimetableStore = defineStore('timetable', () => {
     const sel = selectedSearch.value;
     if (!sel) return null;
     const monday = isCurrentWeek.value ? '' : (week.value?.monday ?? '');
+    if (followingNext.value) return { type: sel.type, name: sel.name, display: 'today', weekday: null, monday: '' };
     return { type: sel.type, name: sel.name, display: displayType.value, weekday: day.value, monday };
   });
 
   function clearSearch() {
     selectedSearch.value = null;
+    followingNext.value = false;
     searchValue.value = '';
     options.value = [];
     localStorage.removeItem(STORAGE_KEY);
@@ -483,12 +501,14 @@ export const useTimetableStore = defineStore('timetable', () => {
   async function toggle(type) {
     // "Täna" jumps ahead to the next lessons when today has none left
     if (type === 'today' && (await showNextLessons())) return;
+    followingNext.value = false;
     day.value = null;
     if (type === 'today') weekIdx.value = currentWeekIdx(index.value?.weeks ?? []);
     displayType.value = type;
   }
 
   function setDay(d) {
+    followingNext.value = false; // a day picked; showNextLessons sets it back after picking its own
     day.value = d; // 0=Mon ... 6=Sun
     displayType.value = 'day';
   }
@@ -497,6 +517,7 @@ export const useTimetableStore = defineStore('timetable', () => {
     const next = weekIdx.value + step;
     if (!index.value || next < 0 || next >= index.value.weeks.length) return;
     weekIdx.value = next;
+    followingNext.value = false;
     if (displayType.value === 'today') displayType.value = 'week';
   }
 
