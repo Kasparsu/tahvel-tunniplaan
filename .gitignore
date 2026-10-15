@@ -38,3 +38,6 @@ public/data
 
 # Wrangler local dev state (worker/)
 .wrangler
+
+# survey photos and the architect's DWG, kept locally (7 MB); scripts/extract-map.ts reads them
+research
