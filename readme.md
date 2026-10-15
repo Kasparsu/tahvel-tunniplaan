@@ -37,14 +37,17 @@ The fetch adds them to `index.json`, free rooms show them as icons and can be fi
 its listed rooms without lessons count as free too. If the file cannot be fetched, the deploy goes
 on without room details.
 
-Lunch menus come from https://techno.ee/opilasele/koolilouna/, one tab per campus. The fetch reads
-them into `lunch.json` (the choice of meals, what comes with every meal, amounts, energy and
-allergens, and each campus's notes and allergen legend); if the page cannot be read, the deploy
-goes on and the lunch page says the menu is unavailable. No system publishes when lunch is, so the
-fetch takes each campus's lunch break from its groups' timetables (the midday gap most of them
-share, 11:45-12:45 at most campuses) into each week's file. A group's or teacher's timetable shows a
-"Lõuna" card with the day's meals when that break falls between their lessons, as it does Järve's
-"Söögitund" lessons; the card opens the menu. Settings → "Näita lõunat" hides them.
+Lunch menus come from https://menuu.techno.ee/menu.php?format=json, which gives every campus its
+weeks as data. The fetch reads them into `lunch.json` (the meals to choose between and what is served
+with all of them, with ingredients, amounts, energy and allergens, plus each campus's notes); if the
+feed cannot be read, the deploy goes on and the lunch page says the menu is unavailable. Mustamäe's
+kitchen reports through a different provider and the feed passes that through unchanged — a flat list
+per day rather than a choice, and allergens as numbers that are not the EU's and that nothing in the
+feed explains, so those are left out rather than guessed at. No system publishes when lunch is, so the
+fetch takes each campus's lunch break from its groups' timetables (the midday gap most of them share,
+11:45-12:45 at most campuses) into each week's file. A group's or teacher's timetable shows a "Lõuna"
+card with the day's meals when that break falls between their lessons, as it does Järve's "Söögitund"
+lessons; the card opens the menu. Settings → "Näita lõunat" hides them.
 
 The campuses keep their timetables in different systems, and the app merges them so one
 search covers all of them:

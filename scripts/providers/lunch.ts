@@ -1,12 +1,13 @@
 /**
- * School lunch menus from https://techno.ee/opilasele/koolilouna/: one tab per campus, each with its
- * weeks, days and dishes. The campuses write their menus differently: Mustamäe lists shared sections
- * ("Koolilõuna", "Lisaroog"), Kesklinn, Lasnamäe and Järve a choice of meals ("Vali üks…") plus what
- * goes with all of them. The markup is not always well-formed (a week left open swallows the next
- * ones, a week can appear twice, a day's leftover test entry beside the real one), so days are read
- * on their own and told apart by their date, the fuller one of a date kept.
+ * School lunch menus from https://menuu.techno.ee/menu.php?format=json: every campus, its weeks and
+ * their days, as data. It replaces reading them out of the page at techno.ee, which had to cope with
+ * markup that was not always well-formed — a week left open swallowing the next, a day listed twice,
+ * a leftover test entry beside the real one — and with each campus writing its menu differently.
+ *
+ * The feed gives a day its meals to choose between and the things served with all of them, with the
+ * ingredients, amount, energy and allergens of each. Days carry no date: they are the weekdays from
+ * the week's Monday, in order.
  */
-import { parse, type HTMLElement } from "node-html-parser";
 import { clean, type Campus } from "./types";
 
 export interface Dish {
@@ -17,15 +18,15 @@ export interface Dish {
   kcal?: string; // "217"
 }
 export interface LunchSection {
-  title: string; // "Põhitoit (valik I)", "Kõigi valikute juurde", "Koolilõuna"
+  title: string; // "Koolilõuna", "Taimetoit", "Kõigi valikute juurde"
   choice: boolean; // one of the meals to pick from, rather than served with every meal
   dishes: Dish[];
 }
 export interface LunchDay {
   date: string; // ISO
-  intro?: string; // "Vali üks põhitoit:", or on a day without lunch the page's own words
+  intro?: string; // the kitchen's own words, or on a day without lunch why there is none
   sections: LunchSection[];
-  closed?: boolean; // no lunch that day ("Koolilõunat ei pakuta."), rather than no menu published
+  closed?: boolean; // no lunch that day, rather than no menu published
 }
 export interface CampusLunch {
   days: LunchDay[];
@@ -33,85 +34,130 @@ export interface CampusLunch {
   legend: string[]; // "G – sisaldab gluteeni"
 }
 
-const text = (el: HTMLElement | null | undefined) => clean(el?.text.replace(/\s+/g, " "));
-/** "Allergeenid: 1; 2" → "1; 2" */
-const labelled = (dish: HTMLElement, label: string) => {
-  const p = dish.querySelectorAll(".tlmk-menu__ingredients").find((x) => text(x).startsWith(label));
-  return p ? text(p).slice(label.length).replace(/^:\s*/, "") || undefined : undefined;
+/** The feed names its campuses; these are the letters the rest of the app knows them by. */
+const CAMPUS_OF: Record<string, Campus> = { kesklinn: "K", mustamae: "M", jarve: "J", lasnamae: "L" };
+
+/** The fourteen the EU asks to be declared, in the words a menu would use here. */
+const ALLERGEN: Record<string, string> = {
+  gluten: "gluteen",
+  crustaceans: "koorikloomad",
+  eggs: "muna",
+  fish: "kala",
+  peanuts: "maapähkel",
+  soybeans: "soja",
+  soya: "soja",
+  milk: "piim",
+  nuts: "pähklid",
+  celery: "seller",
+  mustard: "sinep",
+  sesame: "seesam",
+  sulphites: "sulfitid",
+  lupin: "lupiin",
+  molluscs: "limused",
 };
 
-function dish(el: HTMLElement): Dish {
-  const facts = el.querySelectorAll(".tlmk-menu__facts span").map(text);
-  const fact = (name: string) => facts.find((f) => f.startsWith(name))?.slice(name.length).trim();
+type Row = Record<string, any>;
+
+/** "125.00" + "g" → "125 g"; a number is written without the noughts it does not need. */
+function amountOf(quantity: unknown, unit: unknown): string | undefined {
+  const n = Number(quantity);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return `${Math.round(n * 100) / 100} ${clean(unit) || "g"}`.trim();
+}
+
+function dish(c: Row): Dish {
+  const allergens = (c.allergens ?? []).map((a: string) => ALLERGEN[a] ?? a);
   return {
-    name: text(el.querySelector("h4")),
-    ingredients: labelled(el, "Koostisosad"),
-    allergens: labelled(el, "Allergeenid"),
-    amount: fact("Kogus"),
-    kcal: fact("Energia")?.replace(/\s*kcal$/, ""),
+    name: clean(c.name),
+    ingredients: clean(c.ingredients) || undefined,
+    allergens: allergens.length ? allergens.join(", ") : undefined,
+    amount: amountOf(c.quantity, c.unit),
+    kcal: Number(c.energy) > 0 ? String(Math.round(Number(c.energy))) : undefined,
   };
 }
 
-const section = (el: HTMLElement, choice: boolean): LunchSection => ({
-  title: text(el.querySelector(".tlmk-menu__group")),
-  choice,
-  dishes: el.querySelectorAll(".tlmk-menu__dish").map(dish),
-});
-
-/** "28.09.2026" → "2026-09-28" */
-const isoDate = (d: string) => {
-  const m = d.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : null;
-};
-
-function day(el: HTMLElement): LunchDay | null {
-  const date = isoDate(text(el.querySelector(".tlmk-menu__date")));
-  const body = el.querySelector(".tlmk-menu__day-body");
-  if (!date || !body) return null;
-  const sections: LunchSection[] = [];
-  let note: string | undefined; // the kitchen's own words ("Vali üks: põhitoit, taimetoit või supp koos magustoiduga.")
-  let pick: string | undefined; // the page's ("Vali üks põhitoit:")
-  // only the day's own parts: a malformed page can nest other days inside
-  for (const part of body.childNodes.filter((n): n is HTMLElement => n.nodeType === 1)) {
-    const cls = part.getAttribute("class") ?? "";
-    if (cls.includes("tlmk-menu__choices")) sections.push(...part.querySelectorAll(".tlmk-menu__choice").map((c) => section(c, true)));
-    else if (cls.includes("tlmk-menu__shared")) sections.push(section(part, false));
-    else if (cls.includes("tlmk-menu__choice-intro")) pick = text(part);
-    else if (cls.includes("tlmk-menu__ingredients")) note = text(part);
-  }
-  if (sections.length) return { date, intro: note ?? pick, sections };
-  // A day can be listed only to say there is no lunch. Keep it: dropping it made the app fall back
-  // to another day's menu, as if that were today's.
-  const message = text(body);
-  return message ? { date, intro: message, sections: [], closed: true } : null;
+/** ISO date `days` after an ISO date. */
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-const dishCount = (d?: LunchDay) => d?.sections.reduce((n, s) => n + s.dishes.length, 0) ?? 0;
+function day(d: Row, date: string): LunchDay | null {
+  const note = clean(d.note) || undefined;
+  // A day can be listed only to say there is no lunch. Keep it: dropping it made the app fall back
+  // to another day's menu, as if that were today's.
+  if (d.closed) return { date, intro: note ?? "Koolilõunat ei pakuta.", sections: [], closed: true };
 
-/** The menus of the campuses named in the page's tabs, from `fromDate` on. */
-export async function fetchLunch(url: string, campuses: Record<Campus, string>, fromDate: string): Promise<Partial<Record<Campus, CampusLunch>>> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(60_000), headers: { "user-agent": "tahvel-tunniplaan (+https://kasparsu.github.io/tahvel-tunniplaan/)" } });
+  const sections: LunchSection[] = (d.choices ?? [])
+    .map((c: Row): LunchSection => ({ title: clean(c.name), choice: true, dishes: (c.components ?? []).map(dish) }))
+    .filter((s: LunchSection) => s.dishes.length);
+  const shared = (d.shared ?? []).map(dish).filter((x: Dish) => x.name);
+  if (shared.length) sections.push({ title: "Kõigi valikute juurde", choice: false, dishes: shared });
+
+  return sections.length ? { date, intro: note, sections } : null;
+}
+
+/**
+ * Mustamäe's kitchen reports through a different provider, and the feed passes it on as it comes:
+ * the day carries its own date and one flat list of what is served, with a second of what is there
+ * besides, and no choice to make between them.
+ *
+ * Its allergens are numbers, and they are not the EU's: a yoghurt cream is marked 2, which there
+ * would be crustaceans, and bread 1, 2, 3. Nothing in the feed says what the numbers mean, so they
+ * are left out rather than guessed at — the campus's own note already says to ask the kitchen.
+ */
+function dailyDay(d: Row): LunchDay | null {
+  const plain = (c: Row): Dish => ({ ...dish(c), allergens: undefined });
+  const sections: LunchSection[] = [];
+  const lunch = (d.lunch ?? []).map(plain).filter((x: Dish) => x.name);
+  const extra = (d.additional ?? []).map(plain).filter((x: Dish) => x.name);
+  if (lunch.length) sections.push({ title: "Koolilõuna", choice: false, dishes: lunch });
+  if (extra.length) sections.push({ title: "Lisaks", choice: false, dishes: extra });
+  const date = clean(d.date);
+  return date && sections.length ? { date, sections } : null;
+}
+
+/** Every campus's menus from `fromDate` on, by the letter the app knows the campus by. */
+export async function fetchLunch(url: string, fromDate: string): Promise<Partial<Record<Campus, CampusLunch>>> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(60_000),
+    headers: { "user-agent": "tahvel-tunniplaan (+https://kasparsu.github.io/tahvel-tunniplaan/)" },
+  });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  const root = parse(await res.text());
-  const tabs = root.querySelectorAll('[role="tab"]').map(text);
-  const panels = root.querySelectorAll('[role="tabpanel"]');
-  const byName = Object.fromEntries(Object.entries(campuses).map(([code, name]) => [name, code as Campus]));
+  const body = (await res.json()) as Row;
+
   const out: Partial<Record<Campus, CampusLunch>> = {};
-  panels.forEach((panel, i) => {
-    const campus = byName[tabs[i]];
-    if (!campus) return;
+  for (const entry of body.campuses ?? []) {
+    const campus = CAMPUS_OF[clean(entry.campus?.slug)];
+    if (!campus) continue;
+
     const days = new Map<string, LunchDay>();
-    for (const el of panel.querySelectorAll(".tlmk-menu__day")) {
-      const d = day(el);
-      // a date listed twice keeps the fuller entry; a real menu beats a "no lunch" line
-      if (d && d.date >= fromDate && (!days.has(d.date) || dishCount(d) > dishCount(days.get(d.date)))) days.set(d.date, d);
+    const notes = new Set<string>();
+    for (const week of entry.menus ?? []) {
+      const menu = week.menu ?? {};
+      const monday = clean(week.week_start || menu.week_start);
+      if (!monday) continue;
+      // when the kitchen serves, which the page used to leave unsaid
+      const serves = clean(menu.service_time);
+      if (serves) notes.add(`Koolilõunat pakutakse kell ${serves}.`);
+      for (const text of [week.campus_notes, menu.notes]) if (clean(text)) notes.add(clean(text));
+
+      // the daily provider dates its own days; the other numbers them from the Monday
+      (menu.days ?? []).forEach((d: Row, i: number) => {
+        const made = menu.provider === "daily" ? dailyDay(d) : day(d, addDays(monday, i));
+        if (made && made.date >= fromDate) days.set(made.date, made);
+      });
     }
+
     out[campus] = {
       days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
-      notes: panel.querySelectorAll(".tlmk-menu__notes li").map(text).filter(Boolean),
-      legend: panel.querySelectorAll(".tlmk-menu__legend-items span").map(text).filter(Boolean),
+      notes: [...notes],
+      // the feed names its allergens outright, so there is no longer a key of letters to carry
+      legend: [],
     };
-  });
-  if (!Object.keys(out).length) throw new Error(`${url}: no campus menus found (page layout changed?)`);
+  }
+
+  if (!Object.keys(out).length) throw new Error(`${url}: no campus menus found (feed shape changed?)`);
   return out;
 }
