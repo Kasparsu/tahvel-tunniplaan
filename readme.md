@@ -83,7 +83,9 @@ bun run build && bun run preview
 Merging: a lesson entered in two systems (Kesklinn's Edupage with the room "Lasnamäe", Tahvel
 with the real room) is kept once, with the real room. Teachers who appear in several sources are matched by name regardless of word order
 (Tahvel's "First Last" is stored as Edupage's "Last First"), and Mustamäe's surname-only
-teachers are matched to the one full name starting with that surname. Tahvel's 45-minute events
+teachers are matched to the one full name carrying that surname at either end — the sources do not
+agree on the order, and a school may change its mind ("Rosin Mikk" became "Mikk Rosin"). A surname
+two teachers share is left as it is: nothing says which of them taught the lesson. Tahvel's 45-minute events
 are joined into double lessons, and its bell schedule is read off the event times.
 
 Edupage's school servers drop connections from some GitHub Actions IPs, so the deploy workflow

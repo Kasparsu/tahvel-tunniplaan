@@ -91,11 +91,22 @@ const wordSet = (name: string) => words(name).sort().join(" ");
 const canonical = new Map<string, string>(); // word set -> first spelling seen
 for (const name of teacherNames) if (!canonical.has(wordSet(name))) canonical.set(wordSet(name), name);
 const fullNames = [...new Set(canonical.values())].filter((n) => words(n).length > 1);
-/** Same person, same name: word order does not matter, and a bare surname maps to the one full name that starts with it. */
+/**
+ * Same person, same name: word order does not matter, and a bare surname — Mustamäe publishes little
+ * else — maps to the one full name carrying it.
+ *
+ * At either end of that name. The sources do not agree on the order and one school has changed its
+ * mind: "Rosin Mikk" became "Mikk Rosin", and a surname only ever looked at the first word, so he
+ * came out twice over, once at each campus he teaches. Where a surname could be two people it is
+ * left alone, which is the whole of what this can do: nothing says which of them taught the lesson.
+ */
 function teacherKey(name: string): string {
   const w = words(name);
   if (w.length === 1) {
-    const matches = fullNames.filter((n) => words(n)[0] === w[0]);
+    const matches = fullNames.filter((n) => {
+      const full = words(n);
+      return full[0] === w[0] || full.at(-1) === w[0];
+    });
     if (matches.length === 1) return matches[0];
   }
   return canonical.get(wordSet(name)) ?? name;
